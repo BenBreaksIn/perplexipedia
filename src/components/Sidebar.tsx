@@ -62,13 +62,13 @@ export const Sidebar: React.FC = () => {
               {/* Font Size */}
               <div className="space-y-2">
                 <h4 className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Font size</h4>
-                <div className="flex w-full rounded-lg bg-gray-50 dark:bg-gray-800 p-1">
+                <div className="flex w-full rounded-lg bg-gray-50 dark:bg-black p-1">
                   <button 
                     onClick={() => setFontSize('small')}
                     className={`flex-1 py-1.5 text-sm rounded-md transition-all duration-200
                       ${fontSize === 'small' 
-                        ? 'bg-white dark:bg-gray-700 shadow-sm text-perplexity-primary dark:text-blue-400 font-medium' 
-                        : 'text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400'}`}
+                        ? 'bg-white dark:bg-[#121212] text-black dark:text-white font-medium' 
+                        : 'text-gray-600 dark:text-white hover:text-black dark:hover:text-gray-300'}`}
                   >
                     Small
                   </button>
@@ -76,8 +76,8 @@ export const Sidebar: React.FC = () => {
                     onClick={() => setFontSize('standard')}
                     className={`flex-1 py-1.5 text-sm rounded-md transition-all duration-200
                       ${fontSize === 'standard' 
-                        ? 'bg-white dark:bg-gray-700 shadow-sm text-perplexity-primary dark:text-blue-400 font-medium' 
-                        : 'text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400'}`}
+                        ? 'bg-white dark:bg-[#121212] text-black dark:text-white font-medium' 
+                        : 'text-gray-600 dark:text-white hover:text-black dark:hover:text-gray-300'}`}
                   >
                     Standard
                   </button>
@@ -85,8 +85,8 @@ export const Sidebar: React.FC = () => {
                     onClick={() => setFontSize('large')}
                     className={`flex-1 py-1.5 text-sm rounded-md transition-all duration-200
                       ${fontSize === 'large' 
-                        ? 'bg-white dark:bg-gray-700 shadow-sm text-perplexity-primary dark:text-blue-400 font-medium' 
-                        : 'text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400'}`}
+                        ? 'bg-white dark:bg-[#121212] text-black dark:text-white font-medium' 
+                        : 'text-gray-600 dark:text-white hover:text-black dark:hover:text-gray-300'}`}
                   >
                     Large
                   </button>
@@ -96,13 +96,13 @@ export const Sidebar: React.FC = () => {
               {/* Color Mode */}
               <div className="space-y-2">
                 <h4 className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Color mode</h4>
-                <div className="flex w-full rounded-lg bg-gray-50 dark:bg-gray-800 p-1">
+                <div className="flex w-full rounded-lg bg-gray-50 dark:bg-black p-1">
                   <button 
                     onClick={() => setColorMode('light')}
                     className={`flex-1 py-1.5 text-sm rounded-md transition-all duration-200
                       ${colorMode === 'light' 
-                        ? 'bg-white dark:bg-gray-700 shadow-sm text-perplexity-primary dark:text-blue-400 font-medium' 
-                        : 'text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400'}`}
+                        ? 'bg-white dark:bg-[#121212] text-black dark:text-white font-medium' 
+                        : 'text-gray-600 dark:text-white hover:text-black dark:hover:text-gray-300'}`}
                   >
                     <div className="flex items-center justify-center space-x-2">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -115,8 +115,8 @@ export const Sidebar: React.FC = () => {
                     onClick={() => setColorMode('dark')}
                     className={`flex-1 py-1.5 text-sm rounded-md transition-all duration-200
                       ${colorMode === 'dark' 
-                        ? 'bg-white dark:bg-gray-700 shadow-sm text-perplexity-primary dark:text-blue-400 font-medium' 
-                        : 'text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400'}`}
+                        ? 'bg-white dark:bg-[#121212] text-black dark:text-white font-medium' 
+                        : 'text-gray-600 dark:text-white hover:text-black dark:hover:text-gray-300'}`}
                   >
                     <div className="flex items-center justify-center space-x-2">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

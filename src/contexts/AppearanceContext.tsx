@@ -85,8 +85,13 @@ export const AppearanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     // Apply color mode to document
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(colorMode);
+    document.documentElement.removeAttribute('data-theme');
+    if (colorMode === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, [fontSize, colorMode, isMenuOpen, currentUser]);
 
   return (

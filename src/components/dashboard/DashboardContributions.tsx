@@ -367,9 +367,9 @@ export const DashboardContributions = () => {
                       {article.title}
                     </h3>
                     <span className={`px-2 py-0.5 rounded-full text-xs ${
-                      article.status === 'published' ? 'bg-green-100 text-green-800' :
-                      article.status === 'under_review' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
+                      article.status === 'published' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
+                      article.status === 'under_review' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' :
+                      'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-400'
                     }`}>
                       {article.status.split('_').map(word => 
                         word.charAt(0).toUpperCase() + word.slice(1)

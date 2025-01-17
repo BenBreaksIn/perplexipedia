@@ -185,8 +185,8 @@ export const DashboardSettings: React.FC = () => {
                 onClick={() => setFontSize('small')}
                 className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
                   fontSize === 'small' 
-                    ? 'bg-perplexity-primary text-white' 
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                    ? 'bg-white dark:bg-black text-black dark:text-white' 
+                    : 'bg-gray-100 dark:bg-[#121212] text-gray-700 dark:text-white'
                 }`}
               >
                 Small
@@ -195,8 +195,8 @@ export const DashboardSettings: React.FC = () => {
                 onClick={() => setFontSize('standard')}
                 className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
                   fontSize === 'standard' 
-                    ? 'bg-perplexity-primary text-white' 
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                    ? 'bg-white dark:bg-black text-black dark:text-white' 
+                    : 'bg-gray-100 dark:bg-[#121212] text-gray-700 dark:text-white'
                 }`}
               >
                 Standard
@@ -205,8 +205,8 @@ export const DashboardSettings: React.FC = () => {
                 onClick={() => setFontSize('large')}
                 className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
                   fontSize === 'large' 
-                    ? 'bg-perplexity-primary text-white' 
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                    ? 'bg-white dark:bg-black text-black dark:text-white' 
+                    : 'bg-gray-100 dark:bg-[#121212] text-gray-700 dark:text-white'
                 }`}
               >
                 Large
@@ -227,8 +227,8 @@ export const DashboardSettings: React.FC = () => {
                 onClick={() => setColorMode('light')}
                 className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
                   colorMode === 'light' 
-                    ? 'bg-perplexity-primary text-white' 
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                    ? 'bg-white dark:bg-black text-black dark:text-white' 
+                    : 'bg-gray-100 dark:bg-[#121212] text-gray-700 dark:text-white'
                 }`}
               >
                 Light
@@ -237,8 +237,8 @@ export const DashboardSettings: React.FC = () => {
                 onClick={() => setColorMode('dark')}
                 className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
                   colorMode === 'dark' 
-                    ? 'bg-perplexity-primary text-white' 
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                    ? 'bg-white dark:bg-black text-black dark:text-white' 
+                    : 'bg-gray-100 dark:bg-[#121212] text-gray-700 dark:text-white'
                 }`}
               >
                 Dark

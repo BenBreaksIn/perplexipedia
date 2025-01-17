@@ -127,8 +127,8 @@ export const DashboardActivity: React.FC = () => {
 
       <div className="space-y-4">
         {activities.map((activity) => (
-          <div key={activity.id} className="flex items-start space-x-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-            <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+          <div key={activity.id} className="flex items-start space-x-4 p-4 bg-gray-50 dark:bg-black rounded-lg">
+            <div className="p-2 bg-white dark:bg-[#121212] text-gray-700 dark:text-white rounded-lg shadow-sm">
               {getActivityIcon(activity.type)}
             </div>
             <div className="flex-1 min-w-0">

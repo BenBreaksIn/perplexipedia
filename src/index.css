@@ -11,10 +11,16 @@
 }
 
 [data-theme='dark'] {
-  --wiki-background: #121212;
-  --wiki-border: #2d2d2d;
-  --perplexity-primary: #3b82f6;
-  --perplexity-secondary: #2563eb;
+  --wiki-background: #000000;
+  --wiki-border: #333333;
+  --perplexity-primary: #ffffff;
+  --perplexity-secondary: #e0e0e0;
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --text-tertiary: #cccccc;
+  --bg-card: #121212;
+  --bg-hover: #1a1a1a;
+  --bg-active: #262626;
 }
 
 @layer base {
@@ -23,7 +29,7 @@
   }
 
   [data-theme='dark'] body {
-    @apply bg-[#121212] text-gray-100;
+    @apply bg-black text-white;
   }
 
   /* Smooth transitions for theme changes */
@@ -59,10 +65,10 @@
   .menu-toggle {
     @apply p-2 rounded-lg text-gray-600
            hover:text-perplexity-primary hover:bg-gray-100
-           dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-gray-800
+           dark:text-white dark:hover:text-gray-300 dark:hover:bg-[#1a1a1a]
            transition-all duration-200 relative
            border border-transparent hover:border-gray-200
-           dark:hover:border-gray-700;
+           dark:hover:border-[#333333];
   }
 
   .menu-toggle svg {
@@ -76,12 +82,12 @@
   /* Rest of the components remain the same */
   .wiki-link {
     @apply text-[#0645ad] hover:text-[#0b0080] hover:underline 
-           dark:text-blue-400 dark:hover:text-blue-300;
+           dark:text-white dark:hover:text-gray-300;
   }
   
   .nav-link {
     @apply text-gray-700 hover:text-[#0645ad] hover:underline 
-           dark:text-gray-300 dark:hover:text-blue-400;
+           dark:text-white dark:hover:text-gray-300;
   }
   
   .page-tab {
@@ -101,15 +107,15 @@
   /* Card styles */
   .wiki-card {
     @apply border border-wiki-border rounded-lg p-6 
-           bg-white dark:bg-gray-900
+           bg-white dark:bg-[#121212]
            hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20
            transition-all duration-200;
   }
 
   /* Settings card specific styles */
   .settings-card {
-    @apply bg-white dark:bg-gray-900 rounded-lg p-4 space-y-3
-           border border-gray-200 dark:border-gray-800;
+    @apply bg-white dark:bg-[#121212] rounded-lg p-4 space-y-3
+           border border-gray-200 dark:border-[#333333];
   }
 
   .settings-header {
@@ -121,18 +127,18 @@
   }
 
   .settings-group {
-    @apply flex rounded-lg bg-gray-50 dark:bg-gray-800 p-1 gap-1;
+    @apply flex rounded-lg bg-gray-50 dark:bg-[#363636] p-1 gap-1;
   }
 
   .settings-button {
     @apply flex-1 flex items-center justify-center px-3 py-1.5 rounded-md
            text-sm font-medium
            transition-all duration-200
-           hover:bg-white dark:hover:bg-gray-700;
+           hover:bg-white dark:hover:bg-[#404040];
   }
 
   .settings-button.active {
-    @apply bg-white dark:bg-gray-700 text-perplexity-primary dark:text-blue-400
+    @apply bg-white dark:bg-[#404040] text-perplexity-primary dark:text-blue-400
            shadow-sm;
   }
 
@@ -140,7 +146,8 @@
   .btn-primary {
     @apply px-4 py-2 bg-perplexity-primary text-white rounded-lg 
            hover:bg-perplexity-secondary hover:shadow-md
-           dark:bg-blue-600 dark:hover:bg-blue-700
+           dark:bg-white dark:hover:bg-gray-200
+           dark:text-black
            transition-all duration-200
            font-medium;
   }
@@ -149,20 +156,20 @@
     @apply px-4 py-2 text-sm rounded-lg font-medium
            bg-gray-100 text-gray-700 border border-transparent
            hover:bg-gray-200 hover:border-gray-300
-           dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700
-           dark:hover:bg-gray-700 dark:hover:border-gray-600
+           dark:bg-[#121212] dark:text-white dark:border-[#333333]
+           dark:hover:bg-[#1a1a1a] dark:hover:border-[#404040]
            transition-all duration-200;
   }
 
   /* Input styles */
   .search-input {
     @apply px-4 py-2 rounded-full border border-wiki-border
-           bg-white dark:bg-gray-900
-           text-gray-900 dark:text-gray-100
+           bg-white dark:bg-[#121212]
+           text-gray-900 dark:text-white
            placeholder-gray-500 dark:placeholder-gray-400
-           focus:outline-none focus:border-perplexity-primary dark:focus:border-blue-400
-           focus:ring-2 focus:ring-perplexity-primary focus:ring-opacity-20
-           dark:focus:ring-blue-400 dark:focus:ring-opacity-20
+           focus:outline-none focus:border-gray-400 dark:focus:border-white
+           focus:ring-2 focus:ring-gray-400 focus:ring-opacity-20
+           dark:focus:ring-white dark:focus:ring-opacity-20
            transition-all duration-200
            shadow-sm hover:shadow-md;
   }
@@ -173,6 +180,25 @@
   }
 
   .section-text {
-    @apply text-gray-700 dark:text-gray-300;
+    @apply text-gray-700 dark:text-white;
+  }
+
+  /* Message styles */
+  .error-message {
+    @apply bg-red-50 text-red-600 p-3 rounded-lg
+           dark:bg-red-900/20 dark:text-red-400
+           border border-red-200 dark:border-red-900/50;
+  }
+
+  .success-message {
+    @apply bg-green-50 text-green-600 p-3 rounded-lg
+           dark:bg-green-900/20 dark:text-green-400
+           border border-green-200 dark:border-green-900/50;
+  }
+
+  .info-message {
+    @apply bg-blue-50 text-blue-600 p-3 rounded-lg
+           dark:bg-blue-900/20 dark:text-blue-400
+           border border-blue-200 dark:border-blue-900/50;
   }
 }
