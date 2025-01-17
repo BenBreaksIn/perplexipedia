@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-interface LoginProps {
-  onSignupClick: () => void;
-}
-
-export const Login: React.FC<LoginProps> = ({ onSignupClick }) => {
+export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +17,7 @@ export const Login: React.FC<LoginProps> = ({ onSignupClick }) => {
       setError('');
       setLoading(true);
       await login(email, password);
-      // Redirect or handle successful login
+      navigate('/dashboard');
     } catch (err) {
       setError('Failed to sign in. Please check your credentials.');
       console.error(err);
@@ -87,7 +85,7 @@ export const Login: React.FC<LoginProps> = ({ onSignupClick }) => {
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Don't have an account?{' '}
               <button 
-                onClick={onSignupClick}
+                onClick={() => navigate('/signup')}
                 className="text-perplexity-primary dark:text-blue-400 hover:underline"
               >
                 Sign up

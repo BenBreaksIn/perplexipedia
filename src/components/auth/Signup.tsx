@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-interface SignupProps {
-  onLoginClick: () => void;
-}
-
-export const Signup: React.FC<SignupProps> = ({ onLoginClick }) => {
+export const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -13,6 +10,7 @@ export const Signup: React.FC<SignupProps> = ({ onLoginClick }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signup, updateUserProfile } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +26,7 @@ export const Signup: React.FC<SignupProps> = ({ onLoginClick }) => {
       if (displayName && result.user) {
         await updateUserProfile(displayName);
       }
-      // Redirect or handle successful signup
+      navigate('/dashboard');
     } catch (err) {
       setError('Failed to create an account. Please try again.');
       console.error(err);
@@ -121,7 +119,7 @@ export const Signup: React.FC<SignupProps> = ({ onLoginClick }) => {
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Already have an account?{' '}
               <button 
-                onClick={onLoginClick}
+                onClick={() => navigate('/login')}
                 className="text-perplexity-primary dark:text-blue-400 hover:underline"
               >
                 Log in

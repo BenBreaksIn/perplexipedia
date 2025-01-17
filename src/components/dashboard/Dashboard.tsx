@@ -1,31 +1,25 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { DashboardProfile } from './DashboardProfile';
 import { DashboardActivity } from './DashboardActivity';
 import { DashboardContributions } from './DashboardContributions';
 import { DashboardSaved } from './DashboardSaved';
 import { DashboardSettings } from './DashboardSettings';
-
-type DashboardTab = 'profile' | 'activity' | 'contributions' | 'saved' | 'settings';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<DashboardTab>('profile');
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const renderTabContent = () => {
-    switch (currentTab) {
-      case 'profile':
-        return <DashboardProfile />;
-      case 'activity':
-        return <DashboardActivity />;
-      case 'contributions':
-        return <DashboardContributions />;
-      case 'saved':
-        return <DashboardSaved />;
-      case 'settings':
-        return <DashboardSettings />;
+  // Redirect to profile if no specific route is selected
+  React.useEffect(() => {
+    if (location.pathname === '/dashboard') {
+      navigate('/dashboard/profile');
     }
-  };
+  }, [location, navigate]);
+
+  const isActive = (path: string) => location.pathname === `/dashboard/${path}`;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -55,9 +49,9 @@ export const Dashboard: React.FC = () => {
 
             <nav className="space-y-1">
               <button
-                onClick={() => setCurrentTab('profile')}
+                onClick={() => navigate('/dashboard/profile')}
                 className={`w-full text-left px-4 py-2 rounded-lg transition-colors duration-150 ${
-                  currentTab === 'profile'
+                  isActive('profile')
                     ? 'bg-perplexity-primary/10 text-perplexity-primary dark:bg-blue-900/30 dark:text-blue-400'
                     : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
@@ -65,9 +59,9 @@ export const Dashboard: React.FC = () => {
                 Profile
               </button>
               <button
-                onClick={() => setCurrentTab('activity')}
+                onClick={() => navigate('/dashboard/activity')}
                 className={`w-full text-left px-4 py-2 rounded-lg transition-colors duration-150 ${
-                  currentTab === 'activity'
+                  isActive('activity')
                     ? 'bg-perplexity-primary/10 text-perplexity-primary dark:bg-blue-900/30 dark:text-blue-400'
                     : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
@@ -75,9 +69,9 @@ export const Dashboard: React.FC = () => {
                 Recent Activity
               </button>
               <button
-                onClick={() => setCurrentTab('contributions')}
+                onClick={() => navigate('/dashboard/contributions')}
                 className={`w-full text-left px-4 py-2 rounded-lg transition-colors duration-150 ${
-                  currentTab === 'contributions'
+                  isActive('contributions')
                     ? 'bg-perplexity-primary/10 text-perplexity-primary dark:bg-blue-900/30 dark:text-blue-400'
                     : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
@@ -85,9 +79,9 @@ export const Dashboard: React.FC = () => {
                 Contributions
               </button>
               <button
-                onClick={() => setCurrentTab('saved')}
+                onClick={() => navigate('/dashboard/saved')}
                 className={`w-full text-left px-4 py-2 rounded-lg transition-colors duration-150 ${
-                  currentTab === 'saved'
+                  isActive('saved')
                     ? 'bg-perplexity-primary/10 text-perplexity-primary dark:bg-blue-900/30 dark:text-blue-400'
                     : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
@@ -95,9 +89,9 @@ export const Dashboard: React.FC = () => {
                 Saved Articles
               </button>
               <button
-                onClick={() => setCurrentTab('settings')}
+                onClick={() => navigate('/dashboard/settings')}
                 className={`w-full text-left px-4 py-2 rounded-lg transition-colors duration-150 ${
-                  currentTab === 'settings'
+                  isActive('settings')
                     ? 'bg-perplexity-primary/10 text-perplexity-primary dark:bg-blue-900/30 dark:text-blue-400'
                     : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
@@ -111,7 +105,13 @@ export const Dashboard: React.FC = () => {
         {/* Main Content */}
         <div className="flex-1">
           <div className="wiki-card">
-            {renderTabContent()}
+            <Routes>
+              <Route path="profile" element={<DashboardProfile />} />
+              <Route path="activity" element={<DashboardActivity />} />
+              <Route path="contributions" element={<DashboardContributions />} />
+              <Route path="saved" element={<DashboardSaved />} />
+              <Route path="settings" element={<DashboardSettings />} />
+            </Routes>
           </div>
         </div>
       </div>

@@ -1,27 +1,23 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   isMenuOpen: boolean;
   setIsMenuOpen: (isOpen: boolean) => void;
-  onLoginClick: () => void;
-  onSignupClick: () => void;
-  onDashboardClick: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
   isMenuOpen, 
-  setIsMenuOpen,
-  onLoginClick,
-  onSignupClick,
-  onDashboardClick
+  setIsMenuOpen
 }) => {
   const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
       await logout();
-      // Handle successful logout
+      navigate('/');
     } catch (error) {
       console.error('Failed to log out:', error);
     }
@@ -48,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
           {currentUser ? (
             <div className="flex items-center space-x-3">
               <button 
-                onClick={onDashboardClick}
+                onClick={() => navigate('/dashboard')}
                 className="btn-secondary flex items-center space-x-2"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -62,10 +58,10 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           ) : (
             <>
-              <button onClick={onSignupClick} className="btn-secondary">
+              <button onClick={() => navigate('/signup')} className="btn-secondary">
                 Create Account
               </button>
-              <button onClick={onLoginClick} className="btn-primary">
+              <button onClick={() => navigate('/login')} className="btn-primary">
                 Log in
               </button>
             </>
