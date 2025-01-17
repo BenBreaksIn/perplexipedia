@@ -31,7 +31,7 @@ function App() {
         return <Signup onLoginClick={() => setCurrentView('login')} />;
       default:
         return (
-          <div className="container mx-auto px-4 py-8 flex">
+          <div className="container mx-auto px-4 py-8 flex flex-1">
             <Sidebar
               isMenuOpen={isMenuOpen}
               fontSize={fontSize}
@@ -66,7 +66,9 @@ function App() {
 
   return (
     <AuthProvider>
-      <div className={`min-h-screen bg-wiki-bg ${fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : 'text-base'}`}>
+      <div className={`min-h-screen bg-wiki-bg flex flex-col ${
+        fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : 'text-base'
+      }`}>
         <Header 
           isMenuOpen={isMenuOpen} 
           setIsMenuOpen={setIsMenuOpen}
@@ -74,7 +76,9 @@ function App() {
           onSignupClick={() => setCurrentView('signup')}
         />
 
-        {renderContent()}
+        <div className="flex-1 flex flex-col">
+          {renderContent()}
+        </div>
 
         <Footer />
       </div>
