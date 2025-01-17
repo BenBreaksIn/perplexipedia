@@ -3,11 +3,15 @@ import './App.css'
 import { Header } from './components/Header'
 import { Sidebar } from './components/Sidebar'
 import { Footer } from './components/Footer'
+import { AuthProvider } from './contexts/AuthContext'
+import { Login } from './components/auth/Login'
+import { Signup } from './components/auth/Signup'
 
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [fontSize, setFontSize] = useState('standard');
   const [colorMode, setColorMode] = useState('light');
+  const [currentView, setCurrentView] = useState<'main' | 'login' | 'signup'>('main');
 
   // Update data-theme attribute when color mode changes
   useEffect(() => {
@@ -19,44 +23,62 @@ function App() {
     }
   }, [colorMode]);
 
-  return (
-    <div className={`min-h-screen bg-wiki-bg ${fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : 'text-base'}`}>
-      <Header isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
+  const renderContent = () => {
+    switch (currentView) {
+      case 'login':
+        return <Login onSignupClick={() => setCurrentView('signup')} />;
+      case 'signup':
+        return <Signup onLoginClick={() => setCurrentView('login')} />;
+      default:
+        return (
+          <div className="container mx-auto px-4 py-8 flex">
+            <Sidebar
+              isMenuOpen={isMenuOpen}
+              fontSize={fontSize}
+              setFontSize={setFontSize}
+              colorMode={colorMode}
+              setColorMode={setColorMode}
+            />
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8 flex">
-        <Sidebar
-          isMenuOpen={isMenuOpen}
-          fontSize={fontSize}
-          setFontSize={setFontSize}
-          colorMode={colorMode}
-          setColorMode={setColorMode}
+            <main className={`flex-1 transition-all duration-300 ease-in-out ${!isMenuOpen ? 'md:pl-0' : ''}`}>
+              <div className="wiki-card">
+                <h1 className="text-4xl font-linux-libertine mb-4 section-title">Welcome to Perplexipedia</h1>
+                <p className="text-lg mb-6 section-text">
+                  The free AI-powered encyclopedia that anyone can edit.
+                </p>
+                
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div className="wiki-card">
+                    <h2 className="text-2xl font-linux-libertine mb-4 section-title">Featured Article</h2>
+                    <p className="section-text">Discover our featured article of the day...</p>
+                  </div>
+                  <div className="wiki-card">
+                    <h2 className="text-2xl font-linux-libertine mb-4 section-title">Did You Know?</h2>
+                    <p className="section-text">Interesting facts from our latest articles...</p>
+                  </div>
+                </div>
+              </div>
+            </main>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <AuthProvider>
+      <div className={`min-h-screen bg-wiki-bg ${fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : 'text-base'}`}>
+        <Header 
+          isMenuOpen={isMenuOpen} 
+          setIsMenuOpen={setIsMenuOpen}
+          onLoginClick={() => setCurrentView('login')}
+          onSignupClick={() => setCurrentView('signup')}
         />
 
-        {/* Main Content Area */}
-        <main className={`flex-1 transition-all duration-300 ease-in-out ${!isMenuOpen ? 'md:pl-0' : ''}`}>
-          <div className="wiki-card">
-            <h1 className="text-4xl font-linux-libertine mb-4 section-title">Welcome to Perplexipedia</h1>
-            <p className="text-lg mb-6 section-text">
-              The free AI-powered encyclopedia that anyone can edit.
-            </p>
-            
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="wiki-card">
-                <h2 className="text-2xl font-linux-libertine mb-4 section-title">Featured Article</h2>
-                <p className="section-text">Discover our featured article of the day...</p>
-              </div>
-              <div className="wiki-card">
-                <h2 className="text-2xl font-linux-libertine mb-4 section-title">Did You Know?</h2>
-                <p className="section-text">Interesting facts from our latest articles...</p>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
+        {renderContent()}
 
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </AuthProvider>
   );
 }
 

@@ -1,11 +1,30 @@
 import React from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
   isMenuOpen: boolean;
   setIsMenuOpen: (isOpen: boolean) => void;
+  onLoginClick: () => void;
+  onSignupClick: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isMenuOpen, setIsMenuOpen }) => {
+export const Header: React.FC<HeaderProps> = ({ 
+  isMenuOpen, 
+  setIsMenuOpen,
+  onLoginClick,
+  onSignupClick
+}) => {
+  const { currentUser, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Handle successful logout
+    } catch (error) {
+      console.error('Failed to log out:', error);
+    }
+  };
+
   return (
     <header className="bg-white dark:bg-gray-900 border-b border-wiki-border">
       <div className="container mx-auto px-4 py-2 flex justify-between items-center">
@@ -24,12 +43,25 @@ export const Header: React.FC<HeaderProps> = ({ isMenuOpen, setIsMenuOpen }) => 
           <button className="btn-secondary hidden md:block">
             Donate
           </button>
-          <button className="btn-secondary">
-            Create Account
-          </button>
-          <button className="btn-primary">
-            Log in
-          </button>
+          {currentUser ? (
+            <>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {currentUser.displayName || currentUser.email}
+              </span>
+              <button onClick={handleLogout} className="btn-secondary">
+                Log out
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={onSignupClick} className="btn-secondary">
+                Create Account
+              </button>
+              <button onClick={onLoginClick} className="btn-primary">
+                Log in
+              </button>
+            </>
+          )}
           {/* Mobile search button */}
           <button className="btn-secondary md:hidden">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
