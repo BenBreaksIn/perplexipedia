@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { AIService } from '../services/ai';
+import { decryptApiKey } from '../utils/encryption';
 
 interface UseAIResult {
   aiService: AIService | null;
@@ -41,10 +42,16 @@ export const useAI = (): UseAIResult => {
           return;
         }
 
+        // Decrypt the API key
+        const decryptedKey = decryptApiKey(settings.openaiKey);
+        if (!decryptedKey) {
+          setError('Failed to decrypt API key. Please try re-entering your API key in settings.');
+          setIsLoading(false);
+          return;
+        }
+
         const service = new AIService({
-          apiKey: settings.openaiKey,
-          preferredSources: settings.preferredSources || [],
-          topicsOfInterest: settings.topicsOfInterest || []
+          apiKey: decryptedKey
         });
 
         setAIService(service);

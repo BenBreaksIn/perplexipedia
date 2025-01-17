@@ -368,7 +368,7 @@ export const DashboardContributions = () => {
                   ).join(' ')}
                 </span>
                 <button
-                  onClick={() => navigate(`/articles/${article.id}/edit`)}
+                  onClick={() => navigate(`/dashboard/articles/${article.id}/edit`)}
                   className="text-perplexity-primary hover:text-perplexity-secondary"
                 >
                   Edit

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { encryptApiKey, decryptApiKey } from '../../utils/encryption';
 
 interface AISettings {
   openaiKey?: string;
@@ -15,6 +16,7 @@ export const DashboardAISettings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [displayKey, setDisplayKey] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -30,10 +32,12 @@ export const DashboardAISettings = () => {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
+        const decryptedKey = data.openaiKey ? decryptApiKey(data.openaiKey) : '';
         setSettings({
           ...defaultSettings,
-          ...data
+          openaiKey: data.openaiKey
         });
+        setDisplayKey(decryptedKey);
       }
     } catch (err) {
       console.error('Error loading settings:', err);
@@ -48,9 +52,21 @@ export const DashboardAISettings = () => {
     try {
       setError('');
       setSuccess('');
+
+      // Validate API key format
+      if (displayKey && !displayKey.startsWith('sk-')) {
+        setError('Invalid API key format. OpenAI API keys should start with "sk-"');
+        return;
+      }
+
+      // Encrypt the API key before saving
+      const encryptedKey = displayKey ? encryptApiKey(displayKey) : '';
+
       await setDoc(doc(db, 'user_settings', currentUser.uid), {
-        ...settings
+        ...settings,
+        openaiKey: encryptedKey
       }, { merge: true }); // Use merge to preserve other settings
+      
       setSuccess('AI settings saved successfully');
     } catch (err) {
       console.error('Error saving settings:', err);
@@ -95,8 +111,8 @@ export const DashboardAISettings = () => {
           <label className="block text-sm font-medium mb-1">OpenAI API Key</label>
           <input
             type="password"
-            value={settings.openaiKey || ''}
-            onChange={(e) => setSettings(prev => ({ ...prev, openaiKey: e.target.value }))}
+            value={displayKey}
+            onChange={(e) => setDisplayKey(e.target.value)}
             placeholder="sk-..."
             className="search-input w-full"
           />
