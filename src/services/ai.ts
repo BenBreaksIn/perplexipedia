@@ -372,22 +372,36 @@ Do not include any other text or formatting.`
         messages: [
           {
             role: "system",
-            content: `You are a Wikipedia categorization expert. Analyze the article and generate appropriate categories following Wikipedia's best practices:
+            content: `You are a Wikipedia categorization expert. Analyze the article and generate appropriate categories following Wikipedia's strict guidelines:
 
-1. Use hierarchical categorization (from broad to specific)
-2. Include both topical and administrative categories
+1. Generate between 2-10 categories total (aim for 3-7 as ideal)
+2. Use hierarchical categorization, including:
+   - One broad/main category
+   - 1-2 intermediate categories
+   - 1-3 specific categories
+   - 1-2 administrative categories (if needed, e.g., "Articles needing citations")
+
 3. Follow Wikipedia's naming conventions:
    - Use plural forms for most categories
    - Capitalize first letter of each word
    - Use natural language order
+   - Avoid redundant categorization
+
 4. Ensure categories are:
    - Objective and factual
    - Neither too broad nor too specific
-   - Relevant to the main topic
+   - Directly relevant to the main topic
    - Following established category trees
 
-Return ONLY a JSON array of category names. Example:
-["History of Science", "Scientific Discoveries", "Physics Concepts"]`
+Return ONLY a JSON object in this format:
+{
+  "categories": {
+    "main": ["Primary category"],
+    "intermediate": ["Secondary category 1", "Secondary category 2"],
+    "specific": ["Specific category 1", "Specific category 2"],
+    "administrative": ["Administrative category"]
+  }
+}`
           },
           {
             role: "user",
@@ -398,8 +412,23 @@ Return ONLY a JSON array of category names. Example:
         response_format: { type: "json_object" }
       });
 
-      const categories = JSON.parse(response.choices[0].message.content || '[]');
-      return categories.map((name: string) => ({ id: crypto.randomUUID(), name }));
+      const result = JSON.parse(response.choices[0].message.content || '{"categories": {"main":[],"intermediate":[],"specific":[],"administrative":[]}}');
+      
+      // Flatten and combine all category types
+      const allCategories = [
+        ...(result.categories.main || []),
+        ...(result.categories.intermediate || []),
+        ...(result.categories.specific || []),
+        ...(result.categories.administrative || [])
+      ];
+
+      // Limit to maximum 10 categories
+      const limitedCategories = allCategories.slice(0, 10);
+
+      return limitedCategories.map((name: string) => ({ 
+        id: crypto.randomUUID(), 
+        name 
+      }));
     } catch (error) {
       console.error('Error generating categories:', error);
       return [];
