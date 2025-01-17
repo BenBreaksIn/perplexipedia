@@ -4,11 +4,19 @@ Perplexipedia is an innovative platform that aims to create an unbiased, AI-enha
 
 ## 🌟 Project Status
 
-This project is currently in early development. We are:
-- Building the core platform infrastructure
-- Implementing AI integration features
-- Setting up community moderation tools
-- Developing the article management system
+The project has made significant progress in development. Currently implemented:
+- ✅ Core authentication system with Firebase
+- ✅ User dashboard with profile management
+- ✅ AI-powered article generation and fact-checking
+- ✅ Dark/light mode theming
+- ✅ Responsive UI with TailwindCSS
+- ✅ Article management system
+
+In progress:
+- 🚧 Community moderation features
+- 🚧 Article version control
+- 🚧 Collaborative editing system
+- 🚧 Advanced search functionality
 
 ## 🎯 Project Goals
 
@@ -20,19 +28,51 @@ This project is currently in early development. We are:
 
 ## ✨ Key Features
 
-- **AI-Assisted Article Generation**: Users can leverage AI to help draft and structure articles
-- **Automated Fact-Checking**: AI-powered verification system that cross-references information with public sources
-- **Community Moderation**: Changes to articles require community approval to prevent abuse
-- **Version Control**: Track and manage article revisions
-- **Source Verification**: All claims are backed by reliable, publicly accessible sources
+### Implemented Features
+- **Advanced AI Integration**
+  - AI-assisted article generation with GPT-4
+  - Automated fact-checking and source verification
+  - Content moderation and bias detection
+  - Smart topic suggestions and categorization
+
+- **User Management**
+  - Secure authentication with Firebase
+  - User profiles and dashboard
+  - Activity tracking
+  - Saved articles management
+
+- **Article Management**
+  - Article creation and editing
+  - Category and tag system
+  - Version history tracking
+  - Source verification system
+
+### Coming Soon
+- **Community Features**
+  - Collaborative editing
+  - Peer review system
+  - Community voting on changes
+  - Expert verification badges
 
 ## 🛠️ Technical Stack
 
-- **Frontend**: React 18 with TypeScript
-- **Styling**: TailwindCSS for modern, responsive design
-- **Build Tool**: Vite
-- **Code Quality**: ESLint for code linting
-- **Type Safety**: TypeScript for enhanced development experience
+- **Frontend**
+  - React 18 with TypeScript
+  - TailwindCSS for styling
+  - React Router v7 for navigation
+  - Context API for state management
+
+- **Backend & Services**
+  - Firebase Authentication
+  - Firebase Firestore
+  - OpenAI GPT-4 API
+  - Firebase Security Rules
+
+- **Development Tools**
+  - Vite for build tooling
+  - ESLint for code quality
+  - TypeScript for type safety
+  - PostCSS for CSS processing
 
 ## 🚀 Getting Started
 
@@ -47,12 +87,24 @@ cd perplexipedia
 npm install
 ```
 
-3. Start the development server
+3. Set up environment variables
+Create a `.env` file with the following:
+```
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_OPENAI_API_KEY=your_openai_api_key
+```
+
+4. Start the development server
 ```bash
 npm run dev
 ```
 
-4. Build for production
+5. Build for production
 ```bash
 npm run build
 ```
@@ -67,6 +119,13 @@ We welcome contributions from the community! To contribute:
 4. Submit a pull request
 
 Please ensure your contributions align with our commitment to unbiased, factual content.
+
+### Development Guidelines
+- Follow TypeScript best practices
+- Use functional components with hooks
+- Write clean, documented code
+- Follow the existing project structure
+- Add appropriate tests for new features
 
 ### Reporting Issues
 If you find a bug or have a suggestion, please open an issue on our GitHub repository. When reporting bugs, please include:
@@ -93,7 +152,6 @@ The GPL v3.0 ensures that:
 - Modified versions must also be open source
 - Contributors' rights are protected
 - Patents cannot be used to render the program non-free
-
 
 ---
 
