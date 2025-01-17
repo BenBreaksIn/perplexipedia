@@ -27,8 +27,13 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="bg-white dark:bg-gray-900 border-b border-wiki-border">
       <div className="container mx-auto px-4 py-2 flex justify-between items-center">
         <div className="flex items-center space-x-4">
-          <img src="/perplexipedia-logo.svg" alt="Perplexipedia" className="h-8" />
-          <h1 className="text-2xl font-linux-libertine hidden md:block section-title">Perplexipedia</h1>
+          <div 
+            onClick={() => navigate('/')} 
+            className="flex items-center space-x-4 cursor-pointer hover:opacity-80 transition-opacity duration-200"
+          >
+            <img src="/perplexipedia-logo.svg" alt="Perplexipedia" className="h-8" />
+            <h1 className="text-2xl font-linux-libertine hidden md:block section-title">Perplexipedia</h1>
+          </div>
         </div>
         <div className="flex-1 max-w-3xl mx-4 hidden md:block">
           <input
