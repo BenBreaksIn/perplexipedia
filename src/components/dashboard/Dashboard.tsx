@@ -26,7 +26,7 @@ export const Dashboard: React.FC = () => {
   const isActive = (path: string) => location.pathname === `/dashboard/${path}`;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container !max-w-[1672px] mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row gap-8">
         {/* Sidebar Navigation */}
         <div className={`${isMenuOpen ? 'md:block' : 'md:hidden'} hidden w-64 pr-8 transition-all duration-300 ease-in-out`}>

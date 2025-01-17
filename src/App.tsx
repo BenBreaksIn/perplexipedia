@@ -24,7 +24,7 @@ function AppContent() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/dashboard/*" element={<Dashboard />} />
           <Route path="/" element={
-            <div className="container mx-auto px-4 py-8 flex flex-1">
+            <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
               <Sidebar />
 
               <main className="flex-1 transition-all duration-300 ease-in-out">

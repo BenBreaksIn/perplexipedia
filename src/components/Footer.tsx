@@ -3,7 +3,7 @@ import React from 'react';
 export const Footer: React.FC = () => {
   return (
     <footer className="bg-white dark:bg-gray-900 border-t border-wiki-border mt-8">
-      <div className="container mx-auto px-4 py-6">
+      <div className="container !max-w-[1672px] mx-auto px-4 py-6">
         <div className="grid md:grid-cols-4 gap-8">
           <div>
             <h3 className="section-title mb-4">About Perplexipedia</h3>
