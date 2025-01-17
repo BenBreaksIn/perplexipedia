@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Article, ArticleImage, InfoBox } from '../../types/article';
 import ReactMarkdown from 'react-markdown';
 import { useAI } from '../../hooks/useAI';
@@ -22,6 +22,47 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
   const [infobox, setInfobox] = useState<InfoBox | undefined>(article?.infobox);
   const { generateArticle, suggestEdits, generateCategories, isLoading, error } = useAI();
   const [isGeneratingCategories, setIsGeneratingCategories] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Markdown toolbar handlers
+  const insertMarkdown = (prefix: string, suffix: string = '') => {
+    if (!textareaRef.current) return;
+    
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const selectedText = content.substring(start, end);
+    const beforeText = content.substring(0, start);
+    const afterText = content.substring(end);
+    
+    const newText = `${beforeText}${prefix}${selectedText}${suffix}${afterText}`;
+    setContent(newText);
+    
+    // Reset cursor position
+    setTimeout(() => {
+      if (!textareaRef.current) return;
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(
+        start + prefix.length,
+        end + prefix.length
+      );
+    }, 0);
+  };
+
+  const markdownControls = [
+    { icon: 'B', action: () => insertMarkdown('**', '**'), tooltip: 'Bold' },
+    { icon: 'I', action: () => insertMarkdown('*', '*'), tooltip: 'Italic' },
+    { icon: 'H1', action: () => insertMarkdown('# '), tooltip: 'Heading 1' },
+    { icon: 'H2', action: () => insertMarkdown('## '), tooltip: 'Heading 2' },
+    { icon: 'H3', action: () => insertMarkdown('### '), tooltip: 'Heading 3' },
+    { icon: '🔗', action: () => insertMarkdown('[', '](url)'), tooltip: 'Link' },
+    { icon: '📝', action: () => insertMarkdown('> '), tooltip: 'Quote' },
+    { icon: '•', action: () => insertMarkdown('- '), tooltip: 'Bullet List' },
+    { icon: '1.', action: () => insertMarkdown('1. '), tooltip: 'Numbered List' },
+    { icon: '⌨️', action: () => insertMarkdown('`', '`'), tooltip: 'Inline Code' },
+    { icon: '📦', action: () => insertMarkdown('```\n', '\n```'), tooltip: 'Code Block' },
+    { icon: '―', action: () => insertMarkdown('\n---\n'), tooltip: 'Horizontal Rule' },
+    { icon: '🖼️', action: () => insertMarkdown('![Alt text](', ')'), tooltip: 'Image' },
+  ];
 
   const handleSave = () => {
     onSave({
@@ -149,11 +190,26 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
             )}
           </div>
 
+          {/* Markdown Toolbar */}
+          <div className="flex flex-wrap gap-2 p-2 bg-gray-100 rounded-t border border-gray-300">
+            {markdownControls.map((control, index) => (
+              <button
+                key={index}
+                onClick={control.action}
+                className="p-2 hover:bg-gray-200 rounded"
+                title={control.tooltip}
+              >
+                {control.icon}
+              </button>
+            ))}
+          </div>
+
           <textarea
+            ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Write your article content here... (Markdown supported)"
-            className="w-full h-96 p-4 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-96 p-4 border rounded-b focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
           />
 
           {selectedCategories.length > 0 && (
