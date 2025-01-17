@@ -164,14 +164,21 @@ export class AIService {
         const content = articleData.content;
         if (!content) return null;
 
-        // 3. Moderate content
+        // 3. Verify facts before proceeding
+        const isFactual = await this.verifyFacts(content, sources);
+        if (!isFactual) {
+          console.error('Failed to verify article facts');
+          return null;
+        }
+
+        // 4. Moderate content
         const moderation = await this.moderateContent(content);
         if (!moderation.isAppropriate) {
           console.error('Content flagged during moderation:', moderation.reason);
           return null;
         }
 
-        // 4. Generate tags and categories
+        // 5. Generate tags and categories
         const categorization = await this.openai.chat.completions.create({
           model: "gpt-4o",
           messages: [
