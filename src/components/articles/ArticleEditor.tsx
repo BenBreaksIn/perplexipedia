@@ -1,7 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import MDEditor from '@uiw/react-md-editor';
 import Select from 'react-select';
 import { Article, ArticleStatus, ArticleTag, ArticleCategory } from '../../types/article';
+import { useAI } from '../../hooks/useAI';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ArticleEditorProps {
     article?: Article;
@@ -20,6 +24,29 @@ export const ArticleEditor = ({ article, onSave, categories, tags }: ArticleEdit
     const [selectedTags, setSelectedTags] = useState<ArticleTag[]>(
         article?.tags || []
     );
+    const [aiSuggestions, setAISuggestions] = useState<string[]>([]);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [aiEnabled, setAIEnabled] = useState(false);
+    const { aiService, error: aiError } = useAI();
+    const { currentUser } = useAuth();
+
+    useEffect(() => {
+        const loadAISettings = async () => {
+            if (!currentUser) return;
+            try {
+                const docRef = doc(db, 'user_settings', currentUser.uid);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const settings = docSnap.data();
+                    setAIEnabled(settings.aiAssistEnabled || false);
+                }
+            } catch (error) {
+                console.error('Error loading AI settings:', error);
+            }
+        };
+
+        loadAISettings();
+    }, [currentUser]);
 
     const handleSave = useCallback(() => {
         const articleData: Partial<Article> = {
@@ -36,7 +63,7 @@ export const ArticleEditor = ({ article, onSave, categories, tags }: ArticleEdit
             articleData.versions = [{
                 id: crypto.randomUUID(),
                 content,
-                author: 'current-user', // TODO: Get from auth context
+                author: currentUser?.displayName || currentUser?.email || 'unknown',
                 timestamp: new Date(),
                 changes: 'Initial version'
             }];
@@ -44,7 +71,56 @@ export const ArticleEditor = ({ article, onSave, categories, tags }: ArticleEdit
         }
 
         onSave(articleData);
-    }, [title, content, status, selectedCategories, selectedTags, article, onSave]);
+    }, [title, content, status, selectedCategories, selectedTags, article, onSave, currentUser]);
+
+    const handleAIAssist = async () => {
+        if (!aiService || !content) return;
+        
+        try {
+            setIsGenerating(true);
+            const { suggestions, improvedContent } = await aiService.suggestEdits(content);
+            setAISuggestions(suggestions);
+            if (improvedContent) {
+                setContent(improvedContent);
+            }
+        } catch (error) {
+            console.error('Error getting AI suggestions:', error);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateArticle = async () => {
+        if (!aiService || !title) return;
+        
+        try {
+            setIsGenerating(true);
+            const articleData = await aiService.generateArticle(title);
+            if (articleData) {
+                setContent(articleData.content || '');
+                if (articleData.categories) setSelectedCategories(articleData.categories);
+                if (articleData.tags) setSelectedTags(articleData.tags);
+            }
+        } catch (error) {
+            console.error('Error generating article:', error);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateRelated = async () => {
+        if (!aiService || !title) return;
+        
+        try {
+            setIsGenerating(true);
+            const topics = await aiService.generateRelatedTopics(title);
+            setAISuggestions(topics.map(topic => `Consider creating an article about: ${topic}`));
+        } catch (error) {
+            console.error('Error generating related topics:', error);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     return (
         <div className="space-y-4 p-4">
@@ -66,6 +142,49 @@ export const ArticleEditor = ({ article, onSave, categories, tags }: ArticleEdit
                     <option value="published">Published</option>
                 </select>
             </div>
+
+            {aiEnabled && (
+                <div className="flex space-x-2">
+                    <button
+                        onClick={handleGenerateArticle}
+                        disabled={isGenerating || !title}
+                        className="btn-secondary"
+                    >
+                        {isGenerating ? 'Generating...' : 'Generate Article'}
+                    </button>
+                    <button
+                        onClick={handleAIAssist}
+                        disabled={isGenerating || !content}
+                        className="btn-secondary"
+                    >
+                        {isGenerating ? 'Analyzing...' : 'Get AI Suggestions'}
+                    </button>
+                    <button
+                        onClick={handleGenerateRelated}
+                        disabled={isGenerating || !title}
+                        className="btn-secondary"
+                    >
+                        {isGenerating ? 'Generating...' : 'Suggest Related Topics'}
+                    </button>
+                </div>
+            )}
+
+            {aiError && (
+                <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg">
+                    {aiError}
+                </div>
+            )}
+
+            {aiSuggestions.length > 0 && (
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold mb-2">AI Suggestions</h3>
+                    <ul className="list-disc pl-5 space-y-1">
+                        {aiSuggestions.map((suggestion, index) => (
+                            <li key={index} className="text-sm">{suggestion}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
                 <div>

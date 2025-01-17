@@ -5,6 +5,8 @@ import { DashboardActivity } from './DashboardActivity';
 import { DashboardContributions } from './DashboardContributions';
 import { DashboardSaved } from './DashboardSaved';
 import { DashboardSettings } from './DashboardSettings';
+import { DashboardAISettings } from './DashboardAISettings';
+import { ArticleManagement } from '../articles/ArticleManagement';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {
@@ -98,6 +100,16 @@ export const Dashboard: React.FC = () => {
               >
                 Settings
               </button>
+              <button
+                onClick={() => navigate('/dashboard/ai-settings')}
+                className={`w-full text-left px-4 py-2 rounded-lg transition-colors duration-150 ${
+                  isActive('ai-settings')
+                    ? 'bg-perplexity-primary/10 text-perplexity-primary dark:bg-blue-900/30 dark:text-blue-400'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                AI Settings
+              </button>
             </nav>
           </div>
         </div>
@@ -111,6 +123,9 @@ export const Dashboard: React.FC = () => {
               <Route path="contributions" element={<DashboardContributions />} />
               <Route path="saved" element={<DashboardSaved />} />
               <Route path="settings" element={<DashboardSettings />} />
+              <Route path="ai-settings" element={<DashboardAISettings />} />
+              <Route path="articles/new" element={<ArticleManagement />} />
+              <Route path="articles/:id/edit" element={<ArticleManagement />} />
             </Routes>
           </div>
         </div>
