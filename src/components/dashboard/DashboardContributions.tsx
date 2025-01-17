@@ -353,29 +353,49 @@ export const DashboardContributions = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-perplexity-primary"></div>
         </div>
       ) : filteredArticles.length > 0 ? (
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-4">
           {filteredArticles.map(article => (
-            <div key={article.id} className="wiki-card hover:shadow-lg transition-shadow">
-              <h3 className="text-lg font-medium mb-2">{article.title}</h3>
-              <p className="text-sm text-gray-500 mb-4">
-                {article.content.slice(0, 100)}...
-              </p>
-              <div className="flex justify-between items-center">
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  article.status === 'published' ? 'bg-green-100 text-green-800' :
-                  article.status === 'under_review' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {article.status.split('_').map(word => 
-                    word.charAt(0).toUpperCase() + word.slice(1)
-                  ).join(' ')}
-                </span>
-                <button
-                  onClick={() => navigate(`/dashboard/articles/${article.id}/edit`)}
-                  className="text-perplexity-primary hover:text-perplexity-secondary"
-                >
-                  Edit
-                </button>
+            <div key={article.id} className="wiki-card hover:shadow-md transition-shadow border-l-4 pl-4" style={{
+              borderLeftColor: article.status === 'published' ? '#22c55e' : 
+                             article.status === 'under_review' ? '#eab308' : 
+                             '#94a3b8'
+            }}>
+              <div className="flex justify-between items-start">
+                <div className="space-y-2 flex-1">
+                  <div className="flex items-center space-x-3">
+                    <h3 className="text-xl font-linux-libertine hover:text-perplexity-primary">
+                      {article.title}
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${
+                      article.status === 'published' ? 'bg-green-100 text-green-800' :
+                      article.status === 'under_review' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {article.status.split('_').map(word => 
+                        word.charAt(0).toUpperCase() + word.slice(1)
+                      ).join(' ')}
+                    </span>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-300 line-clamp-2 font-serif">
+                    {article.content.slice(0, 200)}...
+                  </p>
+                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                    <span>{article.content.split(' ').length} words</span>
+                    <span>•</span>
+                    <span>Last modified: {new Date(article.updatedAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => navigate(`/dashboard/articles/${article.id}/edit`)}
+                    className="btn-secondary text-sm flex items-center space-x-1"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                    <span>Edit</span>
+                  </button>
+                </div>
               </div>
             </div>
           ))}

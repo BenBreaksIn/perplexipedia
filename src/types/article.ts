@@ -51,4 +51,6 @@ export interface Article {
     currentVersion: string;
     images?: ArticleImage[];
     infobox?: InfoBox;
+    isAIGenerated?: boolean;
+    categoriesLockedByAI?: boolean;
 } 

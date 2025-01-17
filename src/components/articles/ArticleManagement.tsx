@@ -7,19 +7,6 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 
-// Mock data for demonstration - replace with actual data from your backend
-const mockCategories = [
-    { id: '1', name: 'Science', description: 'Scientific articles' },
-    { id: '2', name: 'Technology', description: 'Technology articles' },
-    { id: '3', name: 'History', description: 'Historical articles' }
-];
-
-const mockTags = [
-    { id: '1', name: 'Featured' },
-    { id: '2', name: 'Needs Review' },
-    { id: '3', name: 'Citation Needed' }
-];
-
 interface ArticleManagementProps {
     article?: Article;
 }
@@ -186,8 +173,6 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
                 <ArticleEditor
                     article={article}
                     onSave={handleSave}
-                    categories={mockCategories}
-                    tags={mockTags}
                 />
             ) : (
                 article && (

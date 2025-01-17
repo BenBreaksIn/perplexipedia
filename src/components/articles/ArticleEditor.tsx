@@ -6,15 +6,11 @@ import { useAI } from '../../hooks/useAI';
 interface ArticleEditorProps {
   article?: Article;
   onSave: (article: Partial<Article>) => void;
-  categories: Array<{ id: string; name: string }>;
-  tags: Array<{ id: string; name: string }>;
 }
 
 export const ArticleEditor: React.FC<ArticleEditorProps> = ({
   article,
   onSave,
-  categories,
-  tags,
 }) => {
   const [title, setTitle] = useState(article?.title || '');
   const [content, setContent] = useState(article?.content || '');
@@ -24,7 +20,8 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [images, setImages] = useState<ArticleImage[]>(article?.images || []);
   const [infobox, setInfobox] = useState<InfoBox | undefined>(article?.infobox);
-  const { generateArticle, suggestEdits, isLoading, error } = useAI();
+  const { generateArticle, suggestEdits, generateCategories, isLoading, error } = useAI();
+  const [isGeneratingCategories, setIsGeneratingCategories] = useState(false);
 
   const handleSave = () => {
     onSave({
@@ -34,7 +31,8 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
       tags: selectedTags,
       status,
       images,
-      infobox
+      infobox,
+      categoriesLockedByAI: article?.categoriesLockedByAI
     });
   };
 
@@ -47,6 +45,19 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
       setSelectedTags(result.tags || []);
       setImages(result.images || []);
       setInfobox(result.infobox);
+    }
+  };
+
+  const handleGenerateCategories = async () => {
+    if (!content) return;
+    setIsGeneratingCategories(true);
+    try {
+      const aiCategories = await generateCategories(content);
+      setSelectedCategories(aiCategories);
+    } catch (error) {
+      console.error('Error generating categories:', error);
+    } finally {
+      setIsGeneratingCategories(false);
     }
   };
 
@@ -124,6 +135,18 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
             >
               Get AI Suggestions
             </button>
+            {!article?.categoriesLockedByAI && content && (
+              <button
+                onClick={handleGenerateCategories}
+                disabled={isGeneratingCategories || !content}
+                className="px-4 py-2 bg-perplexity-primary text-white rounded hover:bg-perplexity-secondary disabled:opacity-50 flex items-center space-x-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+                <span>{isGeneratingCategories ? 'Analyzing Content...' : 'Generate Categories'}</span>
+              </button>
+            )}
           </div>
 
           <textarea
@@ -133,57 +156,39 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
             className="w-full h-96 p-4 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h3 className="font-bold mb-2">Categories</h3>
-              <div className="space-y-2">
-                {categories.map((category) => (
-                  <label key={category.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedCategories.some((c) => c.id === category.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedCategories([...selectedCategories, category]);
-                        } else {
-                          setSelectedCategories(
-                            selectedCategories.filter((c) => c.id !== category.id)
-                          );
-                        }
-                      }}
-                      className="mr-2"
-                    />
+          {selectedCategories.length > 0 && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-lg">Article Categories</h3>
+                {article?.categoriesLockedByAI && (
+                  <span className="text-sm text-gray-500 italic flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                    </svg>
+                    AI-Generated Categories
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedCategories.map((category) => (
+                  <span
+                    key={category.id}
+                    className="px-3 py-1 bg-white dark:bg-gray-700 rounded-full text-sm flex items-center"
+                  >
                     {category.name}
-                  </label>
+                    {!article?.categoriesLockedByAI && (
+                      <button
+                        onClick={() => setSelectedCategories(selectedCategories.filter(c => c.id !== category.id))}
+                        className="ml-2 text-gray-400 hover:text-red-500"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
                 ))}
               </div>
             </div>
-
-            <div>
-              <h3 className="font-bold mb-2">Tags</h3>
-              <div className="space-y-2">
-                {tags.map((tag) => (
-                  <label key={tag.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedTags.some((t) => t.id === tag.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedTags([...selectedTags, tag]);
-                        } else {
-                          setSelectedTags(
-                            selectedTags.filter((t) => t.id !== tag.id)
-                          );
-                        }
-                      }}
-                      className="mr-2"
-                    />
-                    {tag.name}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
+          )}
 
           <div>
             <h3 className="font-bold mb-2">Status</h3>

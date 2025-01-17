@@ -9,6 +9,7 @@ import { decryptApiKey } from '../utils/encryption';
 export interface UseAIResult {
   generateArticle: (title: string) => Promise<Partial<Article> | null>;
   suggestEdits: (content: string) => Promise<{ suggestions: string[]; improvedContent?: string }>;
+  generateCategories: (content: string) => Promise<Array<{ id: string; name: string }>>;
   isLoading: boolean;
   error: string | null;
 }
@@ -77,6 +78,25 @@ export const useAI = (): UseAIResult => {
     }
   };
 
+  const generateCategories = async (content: string): Promise<Array<{ id: string; name: string }>> => {
+    if (!aiService) {
+      setError('AI service not initialized');
+      return [];
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      return await aiService.generateCategories(content);
+    } catch (error) {
+      console.error('Error generating categories:', error);
+      setError('Failed to generate categories');
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const suggestEdits = async (content: string): Promise<{ suggestions: string[]; improvedContent?: string }> => {
     if (!aiService) {
       setError('AI service not initialized');
@@ -99,6 +119,7 @@ export const useAI = (): UseAIResult => {
   return {
     generateArticle,
     suggestEdits,
+    generateCategories,
     isLoading,
     error
   };

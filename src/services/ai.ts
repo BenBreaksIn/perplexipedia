@@ -241,13 +241,26 @@ export class AIService {
           messages: [
             {
               role: "system",
-              content: `Analyze the article and suggest relevant tags and categories.
-              Return ONLY a JSON object in this exact format:
-              {
-                "tags": ["tag1", "tag2"],
-                "categories": ["category1", "category2"]
-              }
-              Do not include any other text or formatting.`
+              content: `You are a Wikipedia categorization expert. Analyze the article and generate appropriate categories following Wikipedia's best practices:
+
+1. Use hierarchical categorization (from broad to specific)
+2. Include both topical and administrative categories
+3. Follow Wikipedia's naming conventions:
+   - Use plural forms for most categories
+   - Capitalize first letter of each word
+   - Use natural language order
+4. Ensure categories are:
+   - Objective and factual
+   - Neither too broad nor too specific
+   - Relevant to the main topic
+   - Following established category trees
+
+Return ONLY a JSON object in this exact format:
+{
+  "tags": ["tag1", "tag2"],
+  "categories": ["category1", "category2"]
+}
+Do not include any other text or formatting.`
             },
             {
               role: "user",
@@ -269,6 +282,8 @@ export class AIService {
           tags: tags.map((name: string) => ({ id: crypto.randomUUID(), name })),
           images,
           infobox: articleData.infobox,
+          isAIGenerated: true,
+          categoriesLockedByAI: true,
           versions: [{
             id: crypto.randomUUID(),
             content,
@@ -346,6 +361,47 @@ export class AIService {
       return JSON.parse(result);
     } catch (error) {
       console.error('Error generating related topics:', error);
+      return [];
+    }
+  }
+
+  async generateCategories(content: string): Promise<Array<{ id: string; name: string }>> {
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a Wikipedia categorization expert. Analyze the article and generate appropriate categories following Wikipedia's best practices:
+
+1. Use hierarchical categorization (from broad to specific)
+2. Include both topical and administrative categories
+3. Follow Wikipedia's naming conventions:
+   - Use plural forms for most categories
+   - Capitalize first letter of each word
+   - Use natural language order
+4. Ensure categories are:
+   - Objective and factual
+   - Neither too broad nor too specific
+   - Relevant to the main topic
+   - Following established category trees
+
+Return ONLY a JSON array of category names. Example:
+["History of Science", "Scientific Discoveries", "Physics Concepts"]`
+          },
+          {
+            role: "user",
+            content
+          }
+        ],
+        temperature: 0.5,
+        response_format: { type: "json_object" }
+      });
+
+      const categories = JSON.parse(response.choices[0].message.content || '[]');
+      return categories.map((name: string) => ({ id: crypto.randomUUID(), name }));
+    } catch (error) {
+      console.error('Error generating categories:', error);
       return [];
     }
   }
