@@ -1,0 +1,178 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --perplexity-primary: #2563eb;
+  --perplexity-secondary: #1e40af;
+  --wiki-background: #f8f9fa;
+  --wiki-border: #a2a9b1;
+  --sidebar-width: 16rem;
+}
+
+[data-theme='dark'] {
+  --wiki-background: #121212;
+  --wiki-border: #2d2d2d;
+  --perplexity-primary: #3b82f6;
+  --perplexity-secondary: #2563eb;
+}
+
+@layer base {
+  body {
+    @apply bg-[#f8f9fa] text-gray-900 transition-colors duration-300;
+  }
+
+  [data-theme='dark'] body {
+    @apply bg-[#121212] text-gray-100;
+  }
+
+  /* Smooth transitions for theme changes */
+  * {
+    @apply transition-colors duration-200;
+  }
+}
+
+@layer components {
+  /* Sidebar transitions */
+  .sidebar-transition {
+    @apply transition-all duration-300 ease-in-out transform;
+  }
+
+  .sidebar-enter {
+    @apply translate-x-0;
+  }
+
+  .sidebar-exit {
+    @apply -translate-x-full;
+  }
+
+  /* Content transitions */
+  .content-transition {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  .content-wide {
+    @apply max-w-none;
+  }
+
+  /* Menu toggle button */
+  .menu-toggle {
+    @apply p-2 rounded-lg text-gray-600
+           hover:text-perplexity-primary hover:bg-gray-100
+           dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-gray-800
+           transition-all duration-200 relative
+           border border-transparent hover:border-gray-200
+           dark:hover:border-gray-700;
+  }
+
+  .menu-toggle svg {
+    @apply transition-transform duration-300 ease-in-out;
+  }
+
+  .menu-toggle path {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  /* Rest of the components remain the same */
+  .wiki-link {
+    @apply text-[#0645ad] hover:text-[#0b0080] hover:underline 
+           dark:text-blue-400 dark:hover:text-blue-300;
+  }
+  
+  .nav-link {
+    @apply text-gray-700 hover:text-[#0645ad] hover:underline 
+           dark:text-gray-300 dark:hover:text-blue-400;
+  }
+  
+  .page-tab {
+    @apply px-4 py-2 transition-all duration-200 border-b-2 border-transparent;
+  }
+  
+  .page-tab.active {
+    @apply border-perplexity-primary text-perplexity-primary font-medium
+           dark:border-blue-400 dark:text-blue-400;
+  }
+  
+  .page-tab:not(.active) {
+    @apply text-gray-600 hover:text-perplexity-primary hover:border-perplexity-primary hover:border-opacity-50
+           dark:text-gray-400 dark:hover:text-blue-400 dark:hover:border-blue-400 dark:hover:border-opacity-50;
+  }
+
+  /* Card styles */
+  .wiki-card {
+    @apply border border-wiki-border rounded-lg p-6 
+           bg-white dark:bg-gray-900
+           hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20
+           transition-all duration-200;
+  }
+
+  /* Settings card specific styles */
+  .settings-card {
+    @apply bg-white dark:bg-gray-900 rounded-lg p-4 space-y-3
+           border border-gray-200 dark:border-gray-800;
+  }
+
+  .settings-header {
+    @apply flex items-center justify-between;
+  }
+
+  .settings-title {
+    @apply text-sm font-medium text-gray-900 dark:text-white;
+  }
+
+  .settings-group {
+    @apply flex rounded-lg bg-gray-50 dark:bg-gray-800 p-1 gap-1;
+  }
+
+  .settings-button {
+    @apply flex-1 flex items-center justify-center px-3 py-1.5 rounded-md
+           text-sm font-medium
+           transition-all duration-200
+           hover:bg-white dark:hover:bg-gray-700;
+  }
+
+  .settings-button.active {
+    @apply bg-white dark:bg-gray-700 text-perplexity-primary dark:text-blue-400
+           shadow-sm;
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply px-4 py-2 bg-perplexity-primary text-white rounded-lg 
+           hover:bg-perplexity-secondary hover:shadow-md
+           dark:bg-blue-600 dark:hover:bg-blue-700
+           transition-all duration-200
+           font-medium;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 text-sm rounded-lg font-medium
+           bg-gray-100 text-gray-700 border border-transparent
+           hover:bg-gray-200 hover:border-gray-300
+           dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700
+           dark:hover:bg-gray-700 dark:hover:border-gray-600
+           transition-all duration-200;
+  }
+
+  /* Input styles */
+  .search-input {
+    @apply px-4 py-2 rounded-full border border-wiki-border
+           bg-white dark:bg-gray-900
+           text-gray-900 dark:text-gray-100
+           placeholder-gray-500 dark:placeholder-gray-400
+           focus:outline-none focus:border-perplexity-primary dark:focus:border-blue-400
+           focus:ring-2 focus:ring-perplexity-primary focus:ring-opacity-20
+           dark:focus:ring-blue-400 dark:focus:ring-opacity-20
+           transition-all duration-200
+           shadow-sm hover:shadow-md;
+  }
+
+  /* Section styles */
+  .section-title {
+    @apply font-semibold mb-2 text-gray-900 dark:text-white;
+  }
+
+  .section-text {
+    @apply text-gray-700 dark:text-gray-300;
+  }
+}
