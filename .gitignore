@@ -55,3 +55,17 @@ coverage
 # System files
 Thumbs.db
 desktop.ini
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebaserc
+firebase.json
+firestore.rules
+firestore.indexes.json
+database.rules.json
+storage.rules
+remoteconfig.template.json
+.runtimeconfig.json

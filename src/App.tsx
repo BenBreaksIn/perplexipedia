@@ -6,12 +6,15 @@ import { Footer } from './components/Footer'
 import { AuthProvider } from './contexts/AuthContext'
 import { Login } from './components/auth/Login'
 import { Signup } from './components/auth/Signup'
+import { Dashboard } from './components/dashboard/Dashboard'
 
-function App() {
+type View = 'main' | 'login' | 'signup' | 'dashboard';
+
+function AppContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [fontSize, setFontSize] = useState('standard');
   const [colorMode, setColorMode] = useState('light');
-  const [currentView, setCurrentView] = useState<'main' | 'login' | 'signup'>('main');
+  const [currentView, setCurrentView] = useState<View>('main');
 
   // Update data-theme attribute when color mode changes
   useEffect(() => {
@@ -29,6 +32,8 @@ function App() {
         return <Login onSignupClick={() => setCurrentView('signup')} />;
       case 'signup':
         return <Signup onLoginClick={() => setCurrentView('login')} />;
+      case 'dashboard':
+        return <Dashboard />;
       default:
         return (
           <div className="container mx-auto px-4 py-8 flex flex-1">
@@ -65,23 +70,30 @@ function App() {
   };
 
   return (
-    <AuthProvider>
-      <div className={`min-h-screen bg-wiki-bg flex flex-col ${
-        fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : 'text-base'
-      }`}>
-        <Header 
-          isMenuOpen={isMenuOpen} 
-          setIsMenuOpen={setIsMenuOpen}
-          onLoginClick={() => setCurrentView('login')}
-          onSignupClick={() => setCurrentView('signup')}
-        />
+    <div className={`min-h-screen bg-wiki-bg flex flex-col ${
+      fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : 'text-base'
+    }`}>
+      <Header 
+        isMenuOpen={isMenuOpen} 
+        setIsMenuOpen={setIsMenuOpen}
+        onLoginClick={() => setCurrentView('login')}
+        onSignupClick={() => setCurrentView('signup')}
+        onDashboardClick={() => setCurrentView('dashboard')}
+      />
 
-        <div className="flex-1 flex flex-col">
-          {renderContent()}
-        </div>
-
-        <Footer />
+      <div className="flex-1 flex flex-col">
+        {renderContent()}
       </div>
+
+      <Footer />
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
     </AuthProvider>
   );
 }
