@@ -1,37 +1,22 @@
-import { useState, useEffect } from 'react'
 import './App.css'
 import { Header } from './components/Header'
 import { Sidebar } from './components/Sidebar'
 import { Footer } from './components/Footer'
 import { AuthProvider } from './contexts/AuthContext'
+import { AppearanceProvider, useAppearance } from './contexts/AppearanceContext'
 import { Login } from './components/auth/Login'
 import { Signup } from './components/auth/Signup'
 import { Dashboard } from './components/dashboard/Dashboard'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 
 function AppContent() {
-  const [isMenuOpen, setIsMenuOpen] = useState(true);
-  const [fontSize, setFontSize] = useState('standard');
-  const [colorMode, setColorMode] = useState('light');
-
-  // Update data-theme attribute when color mode changes
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', colorMode);
-    if (colorMode === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [colorMode]);
+  const { fontSize } = useAppearance();
 
   return (
     <div className={`min-h-screen bg-wiki-bg flex flex-col ${
       fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : 'text-base'
     }`}>
-      <Header 
-        isMenuOpen={isMenuOpen} 
-        setIsMenuOpen={setIsMenuOpen}
-      />
+      <Header />
 
       <div className="flex-1 flex flex-col">
         <Routes>
@@ -40,15 +25,9 @@ function AppContent() {
           <Route path="/dashboard/*" element={<Dashboard />} />
           <Route path="/" element={
             <div className="container mx-auto px-4 py-8 flex flex-1">
-              <Sidebar
-                isMenuOpen={isMenuOpen}
-                fontSize={fontSize}
-                setFontSize={setFontSize}
-                colorMode={colorMode}
-                setColorMode={setColorMode}
-              />
+              <Sidebar />
 
-              <main className={`flex-1 transition-all duration-300 ease-in-out ${!isMenuOpen ? 'md:pl-0' : ''}`}>
+              <main className="flex-1 transition-all duration-300 ease-in-out">
                 <div className="wiki-card">
                   <h1 className="text-4xl font-linux-libertine mb-4 section-title">Welcome to Perplexipedia</h1>
                   <p className="text-lg mb-6 section-text">
@@ -81,7 +60,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppContent />
+        <AppearanceProvider>
+          <AppContent />
+        </AppearanceProvider>
       </AuthProvider>
     </Router>
   );

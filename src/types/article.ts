@@ -19,16 +19,36 @@ export interface ArticleCategory {
     description?: string;
 }
 
+export interface ArticleImage {
+  url: string;
+  attribution: string;
+  description: string;
+}
+
+export interface InfoBox {
+  title: string;
+  image: number;
+  key_facts: Record<string, string>;
+}
+
 export interface Article {
     id: string;
     title: string;
     content: string;
-    status: ArticleStatus;
+    status: 'draft' | 'under_review' | 'published' | 'archived';
     author: string;
     createdAt: Date;
     updatedAt: Date;
-    categories: ArticleCategory[];
-    tags: ArticleTag[];
-    versions: ArticleVersion[];
+    categories: Array<{ id: string; name: string }>;
+    tags: Array<{ id: string; name: string }>;
+    versions: Array<{
+        id: string;
+        content: string;
+        author: string;
+        timestamp: Date;
+        changes: string;
+    }>;
     currentVersion: string;
+    images?: ArticleImage[];
+    infobox?: InfoBox;
 } 

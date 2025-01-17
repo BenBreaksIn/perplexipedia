@@ -1,20 +1,8 @@
 import React, { useState } from 'react';
+import { useAppearance } from '../contexts/AppearanceContext';
 
-interface SidebarProps {
-  isMenuOpen: boolean;
-  fontSize: string;
-  setFontSize: (size: string) => void;
-  colorMode: string;
-  setColorMode: (mode: string) => void;
-}
-
-export const Sidebar: React.FC<SidebarProps> = ({
-  isMenuOpen,
-  fontSize,
-  setFontSize,
-  colorMode,
-  setColorMode
-}) => {
+export const Sidebar: React.FC = () => {
+  const { isMenuOpen, fontSize, setFontSize, colorMode, setColorMode } = useAppearance();
   const [showAppearance, setShowAppearance] = useState(true);
 
   return (
@@ -136,19 +124,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </svg>
                       <span>Dark</span>
                     </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Width Setting */}
-              <div className="space-y-2">
-                <h4 className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Width</h4>
-                <div className="flex w-full rounded-lg bg-gray-50 dark:bg-gray-800 p-1">
-                  <button className="flex-1 py-1.5 text-sm rounded-md text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400">
-                    Default
-                  </button>
-                  <button className="flex-1 py-1.5 text-sm rounded-md text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400">
-                    Wide
                   </button>
                 </div>
               </div>

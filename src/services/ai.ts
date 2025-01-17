@@ -116,6 +116,52 @@ export class AIService {
     }
   }
 
+  private async searchImages(topic: string): Promise<Array<{ url: string, attribution: string, description: string }>> {
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are an image research assistant. Search for relevant, free-to-use images from:
+            1. Wikimedia Commons
+            2. Unsplash
+            3. Pexels
+            4. Creative Commons sources
+            
+            Return ONLY a JSON array of image objects in this format:
+            [{
+              "url": "direct image url",
+              "attribution": "credit and license info",
+              "description": "brief description for alt text"
+            }]
+            
+            Ensure all images are:
+            - Free to use
+            - Properly attributed
+            - High quality and relevant
+            - From reputable sources
+            
+            Return at least 2-3 relevant images per article.`
+          },
+          {
+            role: "user",
+            content: `Find relevant free images for an article about: ${topic}`
+          }
+        ],
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+      });
+
+      const content = response.choices[0].message.content || '{"images": []}';
+      const parsed = JSON.parse(content);
+      return Array.isArray(parsed.images) ? parsed.images : [];
+    } catch (error) {
+      console.error('Error searching images:', error);
+      return [];
+    }
+  }
+
   async generateArticle(title: string): Promise<Partial<Article> | null> {
     try {
       // 1. Generate initial research and sources
@@ -125,7 +171,10 @@ export class AIService {
         return null;
       }
 
-      // 2. Generate the article with integrated fact verification
+      // 2. Search for relevant images
+      const images = await this.searchImages(title);
+
+      // 3. Generate the article with integrated fact verification and images
       const response = await this.openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -138,21 +187,29 @@ export class AIService {
             1. Be objective and unbiased
             2. Use clear, academic language
             3. Include relevant facts and figures
-            4. Structure with appropriate sections
+            4. Structure with appropriate sections (Introduction, History, Features, etc.)
             5. Cite sources inline using [1], [2], etc.
             6. Add a References section at the end listing all sources
             7. Only include verifiable information
             8. Format in markdown
+            9. Include image placeholders where appropriate using the provided images
+            10. Add infobox at the start for key facts
+            11. Include "See also" and "External links" sections
             
             Return your response in this JSON format:
             {
               "content": "The article content in markdown",
-              "sources_used": ["array of sources actually used"]
+              "sources_used": ["array of sources actually used"],
+              "infobox": {
+                "title": "string",
+                "image": "index of main image to use",
+                "key_facts": {"label": "value"}
+              }
             }`
           },
           {
             role: "user",
-            content: `Write an article about: ${title}\nAvailable sources: ${JSON.stringify(sources)}`
+            content: `Write an article about: ${title}\nAvailable sources: ${JSON.stringify(sources)}\nAvailable images: ${JSON.stringify(images)}`
           }
         ],
         temperature: 0.7,
@@ -164,21 +221,21 @@ export class AIService {
         const content = articleData.content;
         if (!content) return null;
 
-        // 3. Verify facts before proceeding
+        // 4. Verify facts before proceeding
         const isFactual = await this.verifyFacts(content, sources);
         if (!isFactual) {
           console.error('Failed to verify article facts');
           return null;
         }
 
-        // 4. Moderate content
+        // 5. Moderate content
         const moderation = await this.moderateContent(content);
         if (!moderation.isAppropriate) {
           console.error('Content flagged during moderation:', moderation.reason);
           return null;
         }
 
-        // 5. Generate tags and categories
+        // 6. Generate tags and categories
         const categorization = await this.openai.chat.completions.create({
           model: "gpt-4o",
           messages: [
@@ -210,6 +267,8 @@ export class AIService {
           status: 'draft',
           categories: categories.map((name: string) => ({ id: crypto.randomUUID(), name })),
           tags: tags.map((name: string) => ({ id: crypto.randomUUID(), name })),
+          images,
+          infobox: articleData.infobox,
           versions: [{
             id: crypto.randomUUID(),
             content,

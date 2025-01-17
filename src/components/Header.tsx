@@ -1,17 +1,11 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useAppearance } from '../contexts/AppearanceContext';
 import { useNavigate } from 'react-router-dom';
 
-interface HeaderProps {
-  isMenuOpen: boolean;
-  setIsMenuOpen: (isOpen: boolean) => void;
-}
-
-export const Header: React.FC<HeaderProps> = ({ 
-  isMenuOpen, 
-  setIsMenuOpen
-}) => {
+export const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
+  const { isMenuOpen, setIsMenuOpen } = useAppearance();
   const navigate = useNavigate();
 
   const handleLogout = async () => {

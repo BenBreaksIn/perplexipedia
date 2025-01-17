@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAI } from '../../hooks/useAI';
 import { useAuth } from '../../contexts/AuthContext';
-import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Article, ArticleStatus } from '../../types/article';
 
@@ -17,7 +17,7 @@ type FilterStatus = ArticleStatus | 'all';
 
 export const DashboardContributions = () => {
   const navigate = useNavigate();
-  const { aiService } = useAI();
+  const { generateArticle, isLoading } = useAI();
   const { currentUser } = useAuth();
   const [showAutoPilot, setShowAutoPilot] = useState(false);
   const [step, setStep] = useState(1);
@@ -58,20 +58,23 @@ export const DashboardContributions = () => {
   };
 
   const handleStartGeneration = async () => {
-    if (!aiService || !currentUser) return;
-
+    if (isLoading || !config.selectedTopics.length || !currentUser) return;
+    
     setIsGenerating(true);
+    setProgress(0);
     const totalArticles = config.numberOfArticles;
     let generatedCount = 0;
 
     try {
-      for (const topic of config.selectedTopics.slice(0, totalArticles)) {
-        const article = await aiService.generateArticle(topic);
-        if (article) {
-          // Save the article
+      for (let i = 0; i < config.selectedTopics.length && generatedCount < totalArticles; i++) {
+        const topic = config.selectedTopics[i];
+        const result = await generateArticle(topic);
+        if (result) {
+          // Save the article to Firestore
           const articleId = crypto.randomUUID();
           await setDoc(doc(db, 'articles', articleId), {
-            ...article,
+            ...result,
+            id: articleId,
             authorId: currentUser.uid,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -85,10 +88,9 @@ export const DashboardContributions = () => {
       // Reload articles to show new ones
       await loadArticles();
 
-      // Reset and close auto-pilot after completion
+      // Reset auto-pilot
       setShowAutoPilot(false);
       setStep(1);
-      setProgress(0);
       setConfig({
         numberOfArticles: 1,
         minWordCount: 500,
@@ -99,6 +101,7 @@ export const DashboardContributions = () => {
       console.error('Error generating articles:', error);
     } finally {
       setIsGenerating(false);
+      setProgress(0);
     }
   };
 
