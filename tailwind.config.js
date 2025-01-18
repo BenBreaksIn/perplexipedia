@@ -12,9 +12,9 @@ export default {
           primary: 'var(--perplexity-primary)',
           secondary: 'var(--perplexity-secondary)',
         },
-        wiki: {
-          bg: 'var(--wiki-background)',
-          border: 'var(--wiki-border)',
+        perplexipedia: {
+          bg: 'var(--perplexipedia-background)',
+          border: 'var(--perplexipedia-border)',
         }
       },
       fontFamily: {

@@ -1,69 +1,130 @@
-import { useState } from 'react';
-import { marked } from 'marked';
-import { Article, ArticleVersion } from '../../types/article';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import { Article } from '../../types/article';
+import { Sidebar } from '../Sidebar';
 
-interface ArticleHistoryProps {
-    article: Article;
-    onRestoreVersion: (versionId: string) => void;
+interface ArticleVersion extends Article {
+  version: number;
+  timestamp: any;
 }
 
-export const ArticleHistory = ({ article, onRestoreVersion }: ArticleHistoryProps) => {
-    const [selectedVersion, setSelectedVersion] = useState<ArticleVersion | null>(null);
+export const ArticleHistory: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const [versions, setVersions] = useState<ArticleVersion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    const formatDate = (date: Date) => {
-        return new Date(date).toLocaleString();
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!id) return;
+      
+      try {
+        const versionsQuery = query(
+          collection(db, 'articleVersions'),
+          where('articleId', '==', id),
+          orderBy('version', 'desc')
+        );
+        
+        const versionsSnapshot = await getDocs(versionsQuery);
+        const versionsData = versionsSnapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        })) as ArticleVersion[];
+        
+        setVersions(versionsData);
+      } catch (err) {
+        setError('Failed to load article history');
+        console.error('Error fetching article history:', err);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    return (
-        <div className="grid grid-cols-12 gap-4 p-4">
-            <div className="col-span-4 border-r pr-4">
-                <h3 className="text-xl font-bold mb-4">Version History</h3>
-                <div className="space-y-2">
-                    {article.versions.map((version) => (
-                        <div
-                            key={version.id}
-                            className={`p-3 border rounded cursor-pointer hover:bg-gray-50 ${
-                                selectedVersion?.id === version.id ? 'bg-blue-50 border-blue-500' : ''
-                            }`}
-                            onClick={() => setSelectedVersion(version)}
-                        >
-                            <div className="flex justify-between items-center">
-                                <span className="font-medium">{version.author}</span>
-                                <span className="text-sm text-gray-500">
-                                    {formatDate(version.timestamp)}
-                                </span>
-                            </div>
-                            <p className="text-sm text-gray-600 mt-1">{version.changes}</p>
-                            {version.id !== article.currentVersion && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onRestoreVersion(version.id);
-                                    }}
-                                    className="mt-2 text-sm text-blue-600 hover:text-blue-800"
-                                >
-                                    Restore this version
-                                </button>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
+    fetchHistory();
+  }, [id]);
 
-            <div className="col-span-8">
-                <h3 className="text-xl font-bold mb-4">
-                    {selectedVersion ? 'Version Preview' : 'Select a version to preview'}
-                </h3>
-                {selectedVersion && (
-                    <div className="prose max-w-none">
-                        <div
-                            dangerouslySetInnerHTML={{
-                                __html: marked(selectedVersion.content)
-                            }}
-                        />
-                    </div>
-                )}
+  if (loading) {
+    return (
+      <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
+        <Sidebar />
+        <main className="flex-1 transition-all duration-300 ease-in-out">
+          <div className="perplexipedia-card">
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-perplexity-primary"></div>
             </div>
-        </div>
+          </div>
+        </main>
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
+        <Sidebar />
+        <main className="flex-1 transition-all duration-300 ease-in-out">
+          <div className="perplexipedia-card">
+            <div className="text-red-500">{error}</div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (versions.length === 0) {
+    return (
+      <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
+        <Sidebar />
+        <main className="flex-1 transition-all duration-300 ease-in-out">
+          <div className="perplexipedia-card">
+            <div>No revision history found</div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
+      <Sidebar />
+      <main className="flex-1 transition-all duration-300 ease-in-out">
+        <div className="perplexipedia-card">
+          <h1 className="text-2xl font-linux-libertine mb-4 section-title">
+            Revision history
+          </h1>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {versions.map((version) => (
+                <div key={version.id} className="px-4 py-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="text-sm font-medium">
+                        Version {version.version}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {version.timestamp?.toDate().toLocaleString()}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        by {version.author || 'Unknown'}
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button 
+                        className="px-3 py-1 text-sm rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800"
+                        onClick={() => window.location.href = `/articles/${id}/source?version=${version.version}`}
+                      >
+                        View
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
 }; 

@@ -1,66 +1,53 @@
-import { useState, useEffect } from 'react'
 import './App.css'
 import { Header } from './components/Header'
 import { Sidebar } from './components/Sidebar'
 import { Footer } from './components/Footer'
 import { AuthProvider } from './contexts/AuthContext'
+import { AppearanceProvider, useAppearance } from './contexts/AppearanceContext'
 import { Login } from './components/auth/Login'
 import { Signup } from './components/auth/Signup'
 import { Dashboard } from './components/dashboard/Dashboard'
+import { ArticleView } from './components/articles/ArticleView'
+import { ArticleSource } from './components/articles/ArticleSource'
+import { ArticleHistory } from './components/articles/ArticleHistory'
+import { ArticleInformation } from './components/articles/ArticleInformation'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 
 function AppContent() {
-  const [isMenuOpen, setIsMenuOpen] = useState(true);
-  const [fontSize, setFontSize] = useState('standard');
-  const [colorMode, setColorMode] = useState('light');
-
-  // Update data-theme attribute when color mode changes
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', colorMode);
-    if (colorMode === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [colorMode]);
+  const { fontSize } = useAppearance();
 
   return (
-    <div className={`min-h-screen bg-wiki-bg flex flex-col ${
+    <div className={`min-h-screen bg-perplexipedia-bg flex flex-col ${
       fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : 'text-base'
     }`}>
-      <Header 
-        isMenuOpen={isMenuOpen} 
-        setIsMenuOpen={setIsMenuOpen}
-      />
+      <Header />
 
       <div className="flex-1 flex flex-col">
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/dashboard/*" element={<Dashboard />} />
+          <Route path="/articles/:id" element={<ArticleView />} />
+          <Route path="/articles/:id/source" element={<ArticleSource />} />
+          <Route path="/articles/:id/history" element={<ArticleHistory />} />
+          <Route path="/articles/:id/info" element={<ArticleInformation />} />
           <Route path="/" element={
-            <div className="container mx-auto px-4 py-8 flex flex-1">
-              <Sidebar
-                isMenuOpen={isMenuOpen}
-                fontSize={fontSize}
-                setFontSize={setFontSize}
-                colorMode={colorMode}
-                setColorMode={setColorMode}
-              />
+            <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
+              <Sidebar />
 
-              <main className={`flex-1 transition-all duration-300 ease-in-out ${!isMenuOpen ? 'md:pl-0' : ''}`}>
-                <div className="wiki-card">
+              <main className="flex-1 transition-all duration-300 ease-in-out">
+                <div className="perplexipedia-card">
                   <h1 className="text-4xl font-linux-libertine mb-4 section-title">Welcome to Perplexipedia</h1>
                   <p className="text-lg mb-6 section-text">
                     The free AI-powered encyclopedia that anyone can edit.
                   </p>
                   
                   <div className="grid md:grid-cols-2 gap-8">
-                    <div className="wiki-card">
+                    <div className="perplexipedia-card">
                       <h2 className="text-2xl font-linux-libertine mb-4 section-title">Featured Article</h2>
                       <p className="section-text">Discover our featured article of the day...</p>
                     </div>
-                    <div className="wiki-card">
+                    <div className="perplexipedia-card">
                       <h2 className="text-2xl font-linux-libertine mb-4 section-title">Did You Know?</h2>
                       <p className="section-text">Interesting facts from our latest articles...</p>
                     </div>
@@ -81,7 +68,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppContent />
+        <AppearanceProvider>
+          <AppContent />
+        </AppearanceProvider>
       </AuthProvider>
     </Router>
   );

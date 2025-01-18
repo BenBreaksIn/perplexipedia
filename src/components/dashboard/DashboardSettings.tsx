@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAppearance } from '../../contexts/AppearanceContext';
 import { db } from '../../config/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 
@@ -34,14 +35,13 @@ const defaultNotificationSettings: NotificationSetting[] = [
 type UserSettings = {
   notificationSettings: NotificationSetting[];
   emailNotifications: boolean;
-  darkMode: boolean;
 };
 
 export const DashboardSettings: React.FC = () => {
   const { currentUser } = useAuth();
+  const { fontSize, setFontSize, colorMode, setColorMode, isMenuOpen, setIsMenuOpen } = useAppearance();
   const [notificationSettings, setNotificationSettings] = useState<NotificationSetting[]>(defaultNotificationSettings);
   const [emailNotifications, setEmailNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,15 +56,13 @@ export const DashboardSettings: React.FC = () => {
       (doc) => {
         if (doc.exists()) {
           const data = doc.data() as UserSettings;
-          setNotificationSettings(data.notificationSettings);
-          setEmailNotifications(data.emailNotifications);
-          setDarkMode(data.darkMode);
+          setNotificationSettings(data.notificationSettings || defaultNotificationSettings);
+          setEmailNotifications(data.emailNotifications ?? true);
         } else {
           // Initialize settings if they don't exist
           setDoc(userSettingsRef, {
             notificationSettings: defaultNotificationSettings,
-            emailNotifications: true,
-            darkMode: false
+            emailNotifications: true
           });
         }
         setLoading(false);
@@ -93,8 +91,7 @@ export const DashboardSettings: React.FC = () => {
       const userSettingsRef = doc(db, 'user_settings', currentUser.uid);
       await setDoc(userSettingsRef, {
         notificationSettings: updatedSettings,
-        emailNotifications,
-        darkMode
+        emailNotifications
       }, { merge: true });
     } catch (err) {
       console.error('Error updating notification setting:', err);
@@ -111,9 +108,8 @@ export const DashboardSettings: React.FC = () => {
       const userSettingsRef = doc(db, 'user_settings', currentUser.uid);
       await setDoc(userSettingsRef, {
         notificationSettings,
-        emailNotifications,
-        darkMode
-      });
+        emailNotifications
+      }, { merge: true });
     } catch (err) {
       console.error('Error saving settings:', err);
       setError('Failed to save settings');
@@ -125,7 +121,7 @@ export const DashboardSettings: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="border-b border-wiki-border pb-4">
+        <div className="border-b border-perplexipedia-border pb-4">
           <h2 className="text-2xl font-linux-libertine section-title">Settings</h2>
           <p className="text-gray-600 dark:text-gray-400">Loading your settings...</p>
         </div>
@@ -139,7 +135,7 @@ export const DashboardSettings: React.FC = () => {
   if (error) {
     return (
       <div className="space-y-6">
-        <div className="border-b border-wiki-border pb-4">
+        <div className="border-b border-perplexipedia-border pb-4">
           <h2 className="text-2xl font-linux-libertine section-title">Settings</h2>
           <p className="text-red-600 dark:text-red-400">{error}</p>
         </div>
@@ -149,7 +145,7 @@ export const DashboardSettings: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="border-b border-wiki-border pb-4">
+      <div className="border-b border-perplexipedia-border pb-4">
         <h2 className="text-2xl font-linux-libertine section-title">Settings</h2>
         <p className="text-gray-600 dark:text-gray-400">Manage your account preferences and notifications</p>
       </div>
@@ -157,7 +153,7 @@ export const DashboardSettings: React.FC = () => {
       {/* Account Settings */}
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Account Settings</h3>
-        <div className="wiki-card space-y-4">
+        <div className="perplexipedia-card space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h4 className="text-sm font-medium">Email Notifications</h4>
@@ -176,19 +172,94 @@ export const DashboardSettings: React.FC = () => {
             </label>
           </div>
 
+          {/* Font Size */}
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-sm font-medium">Dark Mode</h4>
+              <h4 className="text-sm font-medium">Font Size</h4>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Toggle dark mode theme
+                Adjust the text size for better readability
+              </p>
+            </div>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setFontSize('small')}
+                className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
+                  fontSize === 'small' 
+                    ? 'bg-white dark:bg-black text-black dark:text-white' 
+                    : 'bg-gray-100 dark:bg-[#121212] text-gray-700 dark:text-white'
+                }`}
+              >
+                Small
+              </button>
+              <button 
+                onClick={() => setFontSize('standard')}
+                className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
+                  fontSize === 'standard' 
+                    ? 'bg-white dark:bg-black text-black dark:text-white' 
+                    : 'bg-gray-100 dark:bg-[#121212] text-gray-700 dark:text-white'
+                }`}
+              >
+                Standard
+              </button>
+              <button 
+                onClick={() => setFontSize('large')}
+                className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
+                  fontSize === 'large' 
+                    ? 'bg-white dark:bg-black text-black dark:text-white' 
+                    : 'bg-gray-100 dark:bg-[#121212] text-gray-700 dark:text-white'
+                }`}
+              >
+                Large
+              </button>
+            </div>
+          </div>
+
+          {/* Color Mode */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-medium">Color Mode</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Choose between light and dark theme
+              </p>
+            </div>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setColorMode('light')}
+                className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
+                  colorMode === 'light' 
+                    ? 'bg-white dark:bg-black text-black dark:text-white' 
+                    : 'bg-gray-100 dark:bg-[#121212] text-gray-700 dark:text-white'
+                }`}
+              >
+                Light
+              </button>
+              <button 
+                onClick={() => setColorMode('dark')}
+                className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
+                  colorMode === 'dark' 
+                    ? 'bg-white dark:bg-black text-black dark:text-white' 
+                    : 'bg-gray-100 dark:bg-[#121212] text-gray-700 dark:text-white'
+                }`}
+              >
+                Dark
+              </button>
+            </div>
+          </div>
+
+          {/* Menu Toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-medium">Sidebar Menu</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Toggle the sidebar menu visibility
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
                 className="sr-only peer"
-                checked={darkMode}
-                onChange={() => setDarkMode(!darkMode)}
+                checked={isMenuOpen}
+                onChange={() => setIsMenuOpen(!isMenuOpen)}
               />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-perplexity-primary/20 dark:peer-focus:ring-perplexity-primary/30 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-perplexity-primary"></div>
             </label>
@@ -201,7 +272,7 @@ export const DashboardSettings: React.FC = () => {
         <h3 className="text-lg font-medium">Notification Settings</h3>
         <div className="space-y-4">
           {notificationSettings.map((setting) => (
-            <div key={setting.id} className="wiki-card flex items-center justify-between">
+            <div key={setting.id} className="perplexipedia-card flex items-center justify-between">
               <div>
                 <h4 className="text-sm font-medium">{setting.label}</h4>
                 <p className="text-sm text-gray-500 dark:text-gray-400">

@@ -77,7 +77,7 @@ export const DashboardAISettings = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="border-b border-wiki-border pb-4">
+        <div className="border-b border-perplexipedia-border pb-4">
           <h2 className="text-2xl font-linux-libertine section-title">AI Settings</h2>
           <p className="text-gray-600 dark:text-gray-400">Loading your AI settings...</p>
         </div>
@@ -90,7 +90,7 @@ export const DashboardAISettings = () => {
 
   return (
     <div className="space-y-8">
-      <div className="border-b border-wiki-border pb-4">
+      <div className="border-b border-perplexipedia-border pb-4">
         <h2 className="text-2xl font-linux-libertine section-title">AI Settings</h2>
         <p className="text-gray-600 dark:text-gray-400">Configure your OpenAI API key for AI-assisted features</p>
       </div>
@@ -106,7 +106,7 @@ export const DashboardAISettings = () => {
         </div>
       )}
 
-      <div className="wiki-card space-y-6">
+      <div className="perplexipedia-card space-y-6">
         <div>
           <label className="block text-sm font-medium mb-1">OpenAI API Key</label>
           <input

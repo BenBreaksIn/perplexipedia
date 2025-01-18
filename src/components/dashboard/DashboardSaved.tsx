@@ -94,7 +94,7 @@ export const DashboardSaved: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="border-b border-wiki-border pb-4">
+        <div className="border-b border-perplexipedia-border pb-4">
           <h2 className="text-2xl font-linux-libertine section-title">Saved Articles</h2>
           <p className="text-gray-600 dark:text-gray-400">Loading your saved articles...</p>
         </div>
@@ -108,7 +108,7 @@ export const DashboardSaved: React.FC = () => {
   if (error) {
     return (
       <div className="space-y-6">
-        <div className="border-b border-wiki-border pb-4">
+        <div className="border-b border-perplexipedia-border pb-4">
           <h2 className="text-2xl font-linux-libertine section-title">Saved Articles</h2>
           <p className="text-red-600 dark:text-red-400">{error}</p>
         </div>
@@ -118,7 +118,7 @@ export const DashboardSaved: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-wiki-border pb-4">
+      <div className="border-b border-perplexipedia-border pb-4">
         <h2 className="text-2xl font-linux-libertine section-title">Saved Articles</h2>
         <p className="text-gray-600 dark:text-gray-400">Access and manage your saved articles</p>
       </div>
@@ -149,11 +149,11 @@ export const DashboardSaved: React.FC = () => {
 
       <div className="space-y-4">
         {sortedAndFilteredArticles.map((article) => (
-          <div key={article.id} className="wiki-card hover:border-perplexity-primary transition-colors duration-150">
+          <div key={article.id} className="perplexipedia-card hover:border-perplexity-primary transition-colors duration-150">
             <div className="flex justify-between items-start">
               <div className="space-y-1">
                 <h3 className="text-lg font-medium hover:text-perplexity-primary">
-                  <a href={`/wiki/${article.title.toLowerCase().replace(/ /g, '-')}`}>
+                  <a href={`/article/${article.title.toLowerCase().replace(/ /g, '-')}`}>
                     {article.title}
                   </a>
                 </h3>

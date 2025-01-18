@@ -1,44 +1,103 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAppearance } from '../contexts/AppearanceContext';
+import { useLocation } from 'react-router-dom';
 
-interface SidebarProps {
-  isMenuOpen: boolean;
-  fontSize: string;
-  setFontSize: (size: string) => void;
-  colorMode: string;
-  setColorMode: (mode: string) => void;
+interface TableOfContentsItem {
+  level: number;
+  text: string;
+  id: string;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
-  isMenuOpen,
-  fontSize,
-  setFontSize,
-  colorMode,
-  setColorMode
-}) => {
+export const Sidebar: React.FC<{ content?: string }> = ({ content }) => {
+  const { isMenuOpen, fontSize, setFontSize, colorMode, setColorMode } = useAppearance();
   const [showAppearance, setShowAppearance] = useState(true);
+  const [showCopySuccess, setShowCopySuccess] = useState(false);
+  const [tableOfContents, setTableOfContents] = useState<TableOfContentsItem[]>([]);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (content) {
+      // Extract headers from markdown content
+      const headerRegex = /^(#{1,6})\s+(.+)$/gm;
+      const headers: TableOfContentsItem[] = [];
+      let match;
+
+      while ((match = headerRegex.exec(content)) !== null) {
+        const level = match[1].length;
+        const text = match[2];
+        const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        headers.push({ level, text, id });
+      }
+
+      setTableOfContents(headers);
+    }
+  }, [content]);
+
+  const handleCopyLink = async () => {
+    try {
+      const url = window.location.origin + location.pathname;
+      await navigator.clipboard.writeText(url);
+      setShowCopySuccess(true);
+      setTimeout(() => setShowCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
+
+  const isArticlePage = location.pathname.startsWith('/articles/') && !location.pathname.includes('/edit');
 
   return (
     <aside className={`${isMenuOpen ? 'md:block' : 'md:hidden'} hidden w-64 pr-8 transition-all duration-300 ease-in-out`}>
       <nav className="space-y-6">
-        <div>
-          <h3 className="section-title">Navigation</h3>
-          <div className="space-y-1">
-            <a href="#" className="nav-link block">Main Page</a>
-            <a href="#" className="nav-link block">Contents</a>
-            <a href="#" className="nav-link block">Featured Content</a>
-            <a href="#" className="nav-link block">Random Article</a>
+        {/* Table of Contents (only show on article pages) */}
+        {isArticlePage && tableOfContents.length > 0 && (
+          <div>
+            <h3 className="section-title">Contents</h3>
+            <div className="space-y-1">
+              {tableOfContents.map((header, index) => (
+                <a
+                  key={index}
+                  href={`#${header.id}`}
+                  className={`nav-link block pl-${(header.level - 1) * 4}`}
+                  style={{ paddingLeft: `${(header.level - 1) * 1}rem` }}
+                >
+                  {header.text}
+                </a>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Tools Section */}
         <div>
           <h3 className="section-title">Tools</h3>
           <div className="space-y-1">
+            <button onClick={() => window.print()} className="nav-link block w-full text-left">
+              Printable version
+            </button>
+            <a href="#" onClick={(e) => {
+              e.preventDefault();
+              window.print();
+            }} className="nav-link block">Print/Download PDF</a>
             <a href="#" className="nav-link block">What links here</a>
             <a href="#" className="nav-link block">Related changes</a>
-            <a href="#" className="nav-link block">Special pages</a>
-            <a href="#" className="nav-link block">Permanent link</a>
-            <a href="#" className="nav-link block">Page information</a>
+            <button 
+              onClick={handleCopyLink} 
+              className={`nav-link block w-full text-left ${showCopySuccess ? 'text-green-600 dark:text-green-400' : ''}`}
+            >
+              {showCopySuccess ? 'Copied!' : 'Permanent link'}
+            </button>
+            <button
+              onClick={() => {
+                const articleId = location.pathname.split('/')[2];
+                if (articleId) {
+                  window.location.href = `/articles/${articleId}/info`;
+                }
+              }}
+              className="nav-link block w-full text-left"
+            >
+              Page information
+            </button>
           </div>
         </div>
 
@@ -57,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
           
           {showAppearance && (
-            <div className="wiki-card space-y-4">
+            <div className="perplexipedia-card space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="section-title mb-0">Appearance</h3>
                 <button
@@ -74,13 +133,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {/* Font Size */}
               <div className="space-y-2">
                 <h4 className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Font size</h4>
-                <div className="flex w-full rounded-lg bg-gray-50 dark:bg-gray-800 p-1">
+                <div className="flex w-full rounded-lg bg-gray-50 dark:bg-black p-1">
                   <button 
                     onClick={() => setFontSize('small')}
                     className={`flex-1 py-1.5 text-sm rounded-md transition-all duration-200
                       ${fontSize === 'small' 
-                        ? 'bg-white dark:bg-gray-700 shadow-sm text-perplexity-primary dark:text-blue-400 font-medium' 
-                        : 'text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400'}`}
+                        ? 'bg-white dark:bg-[#121212] text-black dark:text-white font-medium' 
+                        : 'text-gray-600 dark:text-white hover:text-black dark:hover:text-gray-300'}`}
                   >
                     Small
                   </button>
@@ -88,8 +147,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => setFontSize('standard')}
                     className={`flex-1 py-1.5 text-sm rounded-md transition-all duration-200
                       ${fontSize === 'standard' 
-                        ? 'bg-white dark:bg-gray-700 shadow-sm text-perplexity-primary dark:text-blue-400 font-medium' 
-                        : 'text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400'}`}
+                        ? 'bg-white dark:bg-[#121212] text-black dark:text-white font-medium' 
+                        : 'text-gray-600 dark:text-white hover:text-black dark:hover:text-gray-300'}`}
                   >
                     Standard
                   </button>
@@ -97,8 +156,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => setFontSize('large')}
                     className={`flex-1 py-1.5 text-sm rounded-md transition-all duration-200
                       ${fontSize === 'large' 
-                        ? 'bg-white dark:bg-gray-700 shadow-sm text-perplexity-primary dark:text-blue-400 font-medium' 
-                        : 'text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400'}`}
+                        ? 'bg-white dark:bg-[#121212] text-black dark:text-white font-medium' 
+                        : 'text-gray-600 dark:text-white hover:text-black dark:hover:text-gray-300'}`}
                   >
                     Large
                   </button>
@@ -108,13 +167,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {/* Color Mode */}
               <div className="space-y-2">
                 <h4 className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Color mode</h4>
-                <div className="flex w-full rounded-lg bg-gray-50 dark:bg-gray-800 p-1">
+                <div className="flex w-full rounded-lg bg-gray-50 dark:bg-black p-1">
                   <button 
                     onClick={() => setColorMode('light')}
                     className={`flex-1 py-1.5 text-sm rounded-md transition-all duration-200
                       ${colorMode === 'light' 
-                        ? 'bg-white dark:bg-gray-700 shadow-sm text-perplexity-primary dark:text-blue-400 font-medium' 
-                        : 'text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400'}`}
+                        ? 'bg-white dark:bg-[#121212] text-black dark:text-white font-medium' 
+                        : 'text-gray-600 dark:text-white hover:text-black dark:hover:text-gray-300'}`}
                   >
                     <div className="flex items-center justify-center space-x-2">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -127,8 +186,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => setColorMode('dark')}
                     className={`flex-1 py-1.5 text-sm rounded-md transition-all duration-200
                       ${colorMode === 'dark' 
-                        ? 'bg-white dark:bg-gray-700 shadow-sm text-perplexity-primary dark:text-blue-400 font-medium' 
-                        : 'text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400'}`}
+                        ? 'bg-white dark:bg-[#121212] text-black dark:text-white font-medium' 
+                        : 'text-gray-600 dark:text-white hover:text-black dark:hover:text-gray-300'}`}
                   >
                     <div className="flex items-center justify-center space-x-2">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -136,19 +195,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </svg>
                       <span>Dark</span>
                     </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Width Setting */}
-              <div className="space-y-2">
-                <h4 className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Width</h4>
-                <div className="flex w-full rounded-lg bg-gray-50 dark:bg-gray-800 p-1">
-                  <button className="flex-1 py-1.5 text-sm rounded-md text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400">
-                    Default
-                  </button>
-                  <button className="flex-1 py-1.5 text-sm rounded-md text-gray-600 dark:text-gray-400 hover:text-perplexity-primary dark:hover:text-blue-400">
-                    Wide
                   </button>
                 </div>
               </div>

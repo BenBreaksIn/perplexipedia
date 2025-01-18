@@ -1,18 +1,15 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useAppearance } from '../contexts/AppearanceContext';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
-interface HeaderProps {
-  isMenuOpen: boolean;
-  setIsMenuOpen: (isOpen: boolean) => void;
-}
-
-export const Header: React.FC<HeaderProps> = ({ 
-  isMenuOpen, 
-  setIsMenuOpen
-}) => {
+export const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
+  const { isMenuOpen, setIsMenuOpen } = useAppearance();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     try {
@@ -23,9 +20,61 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const getRandomArticle = async () => {
+    try {
+      // Query all published articles
+      const articlesRef = collection(db, 'articles');
+      const q = query(articlesRef, where('status', '==', 'published'));
+      const querySnapshot = await getDocs(q);
+      
+      // Convert to array and get random article
+      const articles = querySnapshot.docs.map(doc => ({ id: doc.id }));
+      if (articles.length === 0) return null;
+      
+      const randomIndex = Math.floor(Math.random() * articles.length);
+      return articles[randomIndex].id;
+    } catch (error) {
+      console.error('Error getting random article:', error);
+      return null;
+    }
+  };
+
+  const handleRandomClick = async () => {
+    const randomId = await getRandomArticle();
+    if (randomId) {
+      navigate(`/articles/${randomId}`);
+    }
+  };
+
+  const getTabPath = () => {
+    const path = location.pathname;
+    if (path.includes('/source')) return 'source';
+    if (path.includes('/history')) return 'history';
+    return 'read';
+  };
+
+  const currentTab = getTabPath();
+  const articleId = location.pathname.split('/')[2]; // Get article ID from URL
+
+  const handleTabClick = (tab: string) => {
+    if (!articleId) return;
+    
+    switch (tab) {
+      case 'read':
+        navigate(`/articles/${articleId}`);
+        break;
+      case 'source':
+        navigate(`/articles/${articleId}/source`);
+        break;
+      case 'history':
+        navigate(`/articles/${articleId}/history`);
+        break;
+    }
+  };
+
   return (
-    <header className="bg-white dark:bg-gray-900 border-b border-wiki-border">
-      <div className="container mx-auto px-4 py-2 flex justify-between items-center">
+    <header className="bg-white dark:bg-gray-900 border-b border-perplexipedia-border">
+      <div className="container !max-w-[1672px] mx-auto px-4 py-2 flex justify-between items-center">
         <div className="flex items-center space-x-4">
           <div 
             onClick={() => navigate('/')} 
@@ -90,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Page Tabs with Toggle */}
-      <div className="container mx-auto px-4 flex items-center border-b border-wiki-border">
+      <div className="container !max-w-[1672px] mx-auto px-4 flex items-center border-b border-perplexipedia-border">
         <button 
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           className="menu-toggle md:flex hidden items-center justify-center mr-2 -mb-[2px] hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -104,19 +153,41 @@ export const Header: React.FC<HeaderProps> = ({
               strokeWidth="1.5" 
               strokeLinecap="round"
             />
-            <path 
-              className={`transform transition-all duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0'}`}
-              d="M12 8.5H16M12 12H16M12 15.5H16" 
-              stroke="currentColor" 
-              strokeWidth="1.5" 
-              strokeLinecap="round"
-            />
           </svg>
         </button>
         <div className="flex flex-1">
-          <a href="#" className="page-tab active">Read</a>
-          <a href="#" className="page-tab">View source</a>
-          <a href="#" className="page-tab">View history</a>
+          <button 
+            onClick={() => handleTabClick('read')}
+            className={`page-tab ${currentTab === 'read' ? 'active' : ''}`}
+          >
+            Read
+          </button>
+          <button 
+            onClick={() => handleTabClick('source')}
+            className={`page-tab ${currentTab === 'source' ? 'active' : ''}`}
+          >
+            View source
+          </button>
+          <button 
+            onClick={() => handleTabClick('history')}
+            className={`page-tab ${currentTab === 'history' ? 'active' : ''}`}
+          >
+            View history
+          </button>
+          <div className="ml-auto flex">
+            <button 
+              onClick={handleRandomClick}
+              className="page-tab"
+            >
+              Featured
+            </button>
+            <button 
+              onClick={handleRandomClick}
+              className="page-tab"
+            >
+              Random
+            </button>
+          </div>
         </div>
       </div>
     </header>
