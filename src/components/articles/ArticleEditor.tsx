@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Article, ArticleImage, InfoBox } from '../../types/article';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { useAI } from '../../hooks/useAI';
 import { Header } from '../Header';
 import { Sidebar } from '../Sidebar';
@@ -302,7 +304,66 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
                     </div>
                     <div className="perplexipedia-article">
                       {renderInfoBox()}
-                      <ReactMarkdown>{content}</ReactMarkdown>
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]} 
+                        rehypePlugins={[rehypeRaw]}
+                        components={{
+                          h1: ({node, ...props}) => <h1 className="text-4xl font-bold mt-8 mb-4" {...props} />,
+                          h2: ({node, ...props}) => <h2 className="text-3xl font-bold mt-6 mb-3" {...props} />,
+                          h3: ({node, ...props}) => <h3 className="text-2xl font-bold mt-5 mb-2" {...props} />,
+                          p: ({node, ...props}) => <p className="mb-4" {...props} />,
+                          ul: ({node, ...props}) => <ul className="list-disc list-inside mb-4 ml-4" {...props} />,
+                          ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-4 ml-4" {...props} />,
+                          li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                          blockquote: ({node, ...props}) => (
+                            <blockquote className="border-l-4 border-gray-300 pl-4 my-4 italic" {...props} />
+                          ),
+                          img: ({node, alt, src, ...props}) => (
+                            <figure className="my-4">
+                              <img
+                                src={src}
+                                alt={alt}
+                                className="max-w-full h-auto rounded-lg"
+                                {...props}
+                              />
+                              {alt && (
+                                <figcaption className="text-center text-sm text-gray-600 mt-2 italic">
+                                  {alt}
+                                </figcaption>
+                              )}
+                            </figure>
+                          ),
+                          a: ({node, href, ...props}) => (
+                            <a
+                              href={href}
+                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              {...props}
+                            />
+                          ),
+                          table: ({node, ...props}) => (
+                            <div className="overflow-x-auto my-4">
+                              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" {...props} />
+                            </div>
+                          ),
+                          th: ({node, ...props}) => (
+                            <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...props} />
+                          ),
+                          td: ({node, ...props}) => (
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100" {...props} />
+                          ),
+                          code: ({node, ...props}) => (
+                            props.className?.includes('inline') ? (
+                              <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm" {...props} />
+                            ) : (
+                              <code className="block bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto text-sm" {...props} />
+                            )
+                          )
+                        }}
+                      >
+                        {content}
+                      </ReactMarkdown>
                       {images && images.length > 0 && (
                         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {images
