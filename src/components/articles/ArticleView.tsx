@@ -4,6 +4,9 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Article } from '../../types/article';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import { Sidebar } from '../Sidebar';
 
 export const ArticleView: React.FC = () => {
   const { id } = useParams();
@@ -133,22 +136,87 @@ export const ArticleView: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="perplexipedia-card">
-        <article className="prose dark:prose-invert max-w-none">
-          <h1 className="text-4xl font-bold mb-4">{article.title}</h1>
-          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-8 space-x-4">
-            <span>By {article.author || 'Anonymous'}</span>
-            <span>•</span>
-            <span>Last updated: {new Date(article.updatedAt).toLocaleDateString()}</span>
-          </div>
-          <div className="perplexipedia-article">
-            {renderInfoBox()}
-            <ReactMarkdown>{article.content}</ReactMarkdown>
-            {renderImages()}
-          </div>
-        </article>
-      </div>
+    <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
+      <Sidebar />
+      <main className="flex-1 transition-all duration-300 ease-in-out">
+        <div className="perplexipedia-card">
+          <article className="prose dark:prose-invert max-w-none">
+            <h1 className="text-4xl font-bold mb-4">{article.title}</h1>
+            <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-8 space-x-4">
+              <span>By {article.author || 'Anonymous'}</span>
+              <span>•</span>
+              <span>Last updated: {new Date(article.updatedAt).toLocaleDateString()}</span>
+            </div>
+            <div className="perplexipedia-article">
+              {renderInfoBox()}
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]} 
+                rehypePlugins={[rehypeRaw]}
+                components={{
+                  h1: ({node, ...props}) => <h1 className="text-4xl font-bold mt-8 mb-4" {...props} />,
+                  h2: ({node, ...props}) => <h2 className="text-3xl font-bold mt-6 mb-3" {...props} />,
+                  h3: ({node, ...props}) => <h3 className="text-2xl font-bold mt-5 mb-2" {...props} />,
+                  p: ({node, children, ...props}) => {
+                    // Check if the paragraph only contains an image
+                    const childrenArray = React.Children.toArray(children);
+                    if (childrenArray.length === 1 && 
+                        React.isValidElement(childrenArray[0]) && 
+                        childrenArray[0].type === 'img') {
+                      // Return the image element directly
+                      return childrenArray[0];
+                    }
+                    return <p className="mb-4" {...props}>{children}</p>;
+                  },
+                  ul: ({node, ...props}) => <ul className="list-disc list-inside mb-4 ml-4" {...props} />,
+                  ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-4 ml-4" {...props} />,
+                  li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                  blockquote: ({node, ...props}) => (
+                    <blockquote className="border-l-4 border-gray-300 pl-4 my-4 italic" {...props} />
+                  ),
+                  img: ({node, alt, src, ...props}) => (
+                    <img
+                      src={src}
+                      alt={alt}
+                      className="max-w-full h-auto rounded-lg mx-auto my-8"
+                      {...props}
+                    />
+                  ),
+                  a: ({node, href, ...props}) => (
+                    <a
+                      href={href}
+                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      {...props}
+                    />
+                  ),
+                  table: ({node, ...props}) => (
+                    <div className="overflow-x-auto my-4">
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" {...props} />
+                    </div>
+                  ),
+                  th: ({node, ...props}) => (
+                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...props} />
+                  ),
+                  td: ({node, ...props}) => (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100" {...props} />
+                  ),
+                  code: ({node, ...props}) => (
+                    props.className?.includes('inline') ? (
+                      <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm" {...props} />
+                    ) : (
+                      <code className="block bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto text-sm" {...props} />
+                    )
+                  )
+                }}
+              >
+                {article.content}
+              </ReactMarkdown>
+              {renderImages()}
+            </div>
+          </article>
+        </div>
+      </main>
     </div>
   );
 }; 
