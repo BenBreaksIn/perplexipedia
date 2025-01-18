@@ -434,4 +434,113 @@ Return ONLY a JSON object in this format:
       return [];
     }
   }
+
+  async generateArticles(topic: string, count: number): Promise<Array<Partial<Article>>> {
+    const results: Array<Partial<Article>> = [];
+    
+    try {
+      console.log(`Starting generation of ${count} articles for topic: ${topic}`);
+      
+      // First, expand the topic into specific subtopics
+      // Request more subtopics than needed to have a pool to choose from
+      const subtopics = await this.expandTopicIntoSubtopics(topic, Math.max(count * 2, 5));
+      console.log('Generated subtopics:', subtopics);
+      
+      // If we couldn't expand the topic, try generating articles with the original topic
+      if (subtopics.length === 0) {
+        console.log('No subtopics generated, using original topic');
+        const article = await this.generateArticle(topic);
+        if (article) {
+          results.push(article);
+        }
+        return results;
+      }
+      
+      // Keep track of used subtopics to avoid duplicates
+      const usedSubtopics = new Set<string>();
+      
+      // Generate articles for each count requested
+      for (let i = 0; i < count; i++) {
+        // Filter out used subtopics and get a random one
+        const availableSubtopics = subtopics.filter(st => !usedSubtopics.has(st));
+        if (availableSubtopics.length === 0) {
+          console.log('No more unique subtopics available');
+          break;
+        }
+        
+        const randomIndex = Math.floor(Math.random() * availableSubtopics.length);
+        const specificTopic = availableSubtopics[randomIndex];
+        usedSubtopics.add(specificTopic);
+        
+        console.log(`Generating article for specific topic: ${specificTopic}`);
+        try {
+          const article = await this.generateArticle(specificTopic);
+          if (article) {
+            console.log(`Successfully generated article for: ${specificTopic}`);
+            results.push(article);
+          } else {
+            console.error(`Failed to generate article for: ${specificTopic}`);
+          }
+        } catch (error) {
+          console.error(`Error generating article for ${specificTopic}:`, error);
+          continue;
+        }
+      }
+      
+      console.log(`Generation complete. Generated ${results.length} articles`);
+      return results;
+    } catch (error) {
+      console.error('Error in generateArticles:', error);
+      throw error;
+    }
+  }
+
+  private async expandTopicIntoSubtopics(topic: string, count: number): Promise<string[]> {
+    try {
+      console.log(`Expanding topic: ${topic} into ${count} subtopics`);
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a topic research expert. Given a general topic, generate specific, diverse subtopics.
+            Follow these rules strictly:
+            1. For people (historical figures, leaders, etc), use ONLY their full names as titles
+               - Correct: "Mahatma Gandhi", "Albert Einstein"
+               - Incorrect: "Gandhi's Influence", "Einstein's Theory"
+            
+            2. For events, use the official or commonly accepted name
+               - Correct: "World War II", "French Revolution"
+               - Incorrect: "Impact of World War II", "Causes of French Revolution"
+            
+            3. For concepts/topics, use clear, concise noun phrases
+               - Correct: "Quantum Mechanics", "Photosynthesis"
+               - Incorrect: "Understanding Quantum Mechanics", "How Photosynthesis Works"
+            
+            Return ONLY a JSON object with a "subtopics" array of strings, each representing a specific subtopic.
+            Example response:
+            {
+              "subtopics": ["Mahatma Gandhi", "Nelson Mandela", "Martin Luther King Jr."]
+            }`
+          },
+          {
+            role: "user",
+            content: `Generate ${count} diverse subtopics for: ${topic}`
+          }
+        ],
+        temperature: 0.7,
+        response_format: { type: "json_object" }
+      });
+
+      const content = response.choices[0].message.content || '{"subtopics": []}';
+      console.log('Received subtopics response:', content);
+      const parsed = JSON.parse(content);
+      const subtopics = Array.isArray(parsed.subtopics) ? parsed.subtopics.slice(0, count) : [];
+      console.log('Parsed subtopics:', subtopics);
+      return subtopics;
+    } catch (error) {
+      console.error('Error expanding topics:', error);
+      return [];
+    }
+  }
 } 

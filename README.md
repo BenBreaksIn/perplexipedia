@@ -65,7 +65,7 @@ In progress:
 - **Backend & Services**
   - Firebase Authentication
   - Firebase Firestore
-  - OpenAI GPT-4 API
+  - OpenAI GPT-4o API
   - Firebase Security Rules
 
 - **Development Tools**

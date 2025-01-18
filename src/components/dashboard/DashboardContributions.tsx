@@ -14,10 +14,17 @@ interface AutoPilotConfig {
 }
 
 type FilterStatus = ArticleStatus | 'all';
+type SortOption = 'newest' | 'oldest' | 'a-z' | 'z-a';
+
+// Add type for Firestore Timestamp
+interface FirestoreTimestamp {
+  seconds: number;
+  nanoseconds: number;
+}
 
 export const DashboardContributions = () => {
   const navigate = useNavigate();
-  const { generateArticle, isLoading } = useAI();
+  const { generateArticles, isLoading } = useAI();
   const { currentUser } = useAuth();
   const [showAutoPilot, setShowAutoPilot] = useState(false);
   const [step, setStep] = useState(1);
@@ -32,6 +39,8 @@ export const DashboardContributions = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   useEffect(() => {
     loadArticles();
@@ -58,26 +67,46 @@ export const DashboardContributions = () => {
   };
 
   const handleStartGeneration = async () => {
-    if (isLoading || !config.selectedTopics.length || !currentUser) return;
+    if (isLoading || !config.selectedTopics.length || !currentUser) {
+      setError('Please select at least one topic');
+      return;
+    }
     
+    setError(null);
     setIsGenerating(true);
     setProgress(0);
     const totalArticles = config.numberOfArticles;
     let generatedCount = 0;
 
     try {
-      for (let i = 0; i < config.selectedTopics.length && generatedCount < totalArticles; i++) {
-        const topic = config.selectedTopics[i];
-        const result = await generateArticle(topic);
+      // Generate one article at a time, cycling through topics if needed
+      while (generatedCount < totalArticles) {
+        // Get the current topic (cycle through topics if needed)
+        const topicIndex = generatedCount % config.selectedTopics.length;
+        const currentTopic = config.selectedTopics[topicIndex];
+        
+        console.log(`Generating article ${generatedCount + 1} of ${totalArticles} for topic: ${currentTopic}`);
+        
+        // Generate just one article for this topic
+        const articles = await generateArticles(currentTopic, 1);
+        console.log(`Generated articles:`, articles);
+        
+        if (!articles || articles.length === 0) {
+          setError(`Failed to generate article for topic: ${currentTopic}`);
+          continue;
+        }
+        
+        // Save the generated article
+        const result = articles[0];
         if (result) {
-          // Save the article to Firestore
+          const now = new Date();
           const articleId = crypto.randomUUID();
           await setDoc(doc(db, 'articles', articleId), {
             ...result,
             id: articleId,
             authorId: currentUser.uid,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
             status: 'draft'
           });
           generatedCount++;
@@ -85,10 +114,15 @@ export const DashboardContributions = () => {
         }
       }
 
+      if (generatedCount === 0) {
+        setError('No articles were generated. Please try again.');
+        return;
+      }
+
       // Reload articles to show new ones
       await loadArticles();
 
-      // Reset auto-pilot
+      // Reset auto-pilot only if we successfully generated articles
       setShowAutoPilot(false);
       setStep(1);
       setConfig({
@@ -99,14 +133,49 @@ export const DashboardContributions = () => {
       });
     } catch (error) {
       console.error('Error generating articles:', error);
+      setError('Failed to generate articles. Please try again.');
     } finally {
       setIsGenerating(false);
-      setProgress(0);
+      if (!error) {
+        setProgress(0);
+      }
     }
   };
 
-  const filteredArticles = articles.filter(article => 
-    filterStatus === 'all' ? true : article.status === filterStatus
+  const getSortedArticles = (articles: Article[]) => {
+    const sorted = [...articles];
+    
+    const getTimestamp = (date: string | Date | FirestoreTimestamp): number => {
+      if (typeof date === 'object' && 'seconds' in date) {
+        return date.seconds;
+      }
+      return new Date(date).getTime() / 1000;
+    };
+
+    switch (sortBy) {
+      case 'newest':
+        return sorted.sort((a, b) => {
+          const dateA = getTimestamp(a.createdAt);
+          const dateB = getTimestamp(b.createdAt);
+          return dateB - dateA;
+        });
+      case 'oldest':
+        return sorted.sort((a, b) => {
+          const dateA = getTimestamp(a.createdAt);
+          const dateB = getTimestamp(b.createdAt);
+          return dateA - dateB;
+        });
+      case 'a-z':
+        return sorted.sort((a, b) => a.title.localeCompare(b.title));
+      case 'z-a':
+        return sorted.sort((a, b) => b.title.localeCompare(a.title));
+      default:
+        return sorted;
+    }
+  };
+
+  const filteredArticles = getSortedArticles(
+    articles.filter(article => filterStatus === 'all' ? true : article.status === filterStatus)
   );
 
   const renderStep1 = () => (
@@ -186,14 +255,14 @@ export const DashboardContributions = () => {
       <div>
         <label className="block text-sm font-medium mb-2">Select Topics</label>
         <div className="space-y-2">
-          {/* Here you would map through available topics from AI settings */}
-          {/* For now, let's add a simple input */}
           <input
             type="text"
             placeholder="Enter topics (comma-separated)"
-            onChange={(e) => setConfig(prev => ({ ...prev, selectedTopics: e.target.value.split(',').map(t => t.trim()) }))}
+            value={config.selectedTopics.join(', ')}
+            onChange={(e) => setConfig(prev => ({ ...prev, selectedTopics: e.target.value.split(',').map(t => t.trim()).filter(t => t) }))}
             className="search-input w-full"
           />
+          {error && <p className="text-sm text-red-500">{error}</p>}
         </div>
       </div>
       <div className="flex justify-between">
@@ -208,7 +277,7 @@ export const DashboardContributions = () => {
           disabled={isGenerating || config.selectedTopics.length === 0}
           className="btn-primary"
         >
-          Start Generation
+          {isGenerating ? 'Generating...' : 'Start Generation'}
         </button>
       </div>
     </div>
@@ -237,8 +306,25 @@ export const DashboardContributions = () => {
         </div>
       </div>
       <p className="text-center text-sm text-gray-500">
-        Generating articles... Please wait.
+        {error ? (
+          <span className="text-red-500">{error}</span>
+        ) : (
+          'Generating articles... Please wait.'
+        )}
       </p>
+      {error && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => {
+              setError(null);
+              setIsGenerating(false);
+            }}
+            className="btn-secondary text-sm"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
     </div>
   );
 
@@ -297,6 +383,127 @@ export const DashboardContributions = () => {
     </div>
   );
 
+  const formatDate = (dateValue: any) => {
+    try {
+      let date: Date;
+      
+      // Handle Firestore Timestamp
+      if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
+        date = new Date(dateValue.seconds * 1000);
+      }
+      // Handle string
+      else if (typeof dateValue === 'string') {
+        date = new Date(dateValue);
+      }
+      // Handle Date object
+      else if (dateValue instanceof Date) {
+        date = dateValue;
+      }
+      else {
+        throw new Error('Invalid date format');
+      }
+
+      return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Unknown Date';
+    }
+  };
+
+  const renderArticleList = () => (
+    <div className="space-y-4">
+      {filteredArticles.map(article => (
+        <div key={article.id} className="wiki-card hover:shadow-md transition-shadow border-l-4 pl-4" style={{
+          borderLeftColor: article.status === 'published' ? '#22c55e' : 
+                         article.status === 'under_review' ? '#eab308' : 
+                         '#94a3b8'
+        }}>
+          <div className="flex justify-between items-start">
+            <div className="space-y-2 flex-1">
+              <div className="flex items-center space-x-3">
+                <h3 className="text-xl font-linux-libertine hover:text-perplexity-primary">
+                  {article.title}
+                </h3>
+                <span className={`px-2 py-0.5 rounded-full text-xs ${
+                  article.status === 'published' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
+                  article.status === 'under_review' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' :
+                  'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-400'
+                }`}>
+                  {article.status.split('_').map(word => 
+                    word.charAt(0).toUpperCase() + word.slice(1)
+                  ).join(' ')}
+                </span>
+              </div>
+              <p className="text-gray-600 dark:text-gray-300 line-clamp-2 font-serif">
+                {article.content.slice(0, 200)}...
+              </p>
+              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                <span>{article.content.split(' ').length} words</span>
+                <span>•</span>
+                <span>Last modified: {formatDate(article.updatedAt)}</span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => navigate(`/dashboard/articles/${article.id}/edit`)}
+                className="btn-secondary text-sm flex items-center space-x-1"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
+                <span>Edit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderFilters = () => (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center space-x-4">
+        <span className="text-sm text-gray-500">Filter by:</span>
+        <div className="flex space-x-2">
+          {(['all', 'draft', 'under_review', 'published'] as const).map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(status)}
+              className={`px-3 py-1 rounded-full text-sm ${
+                filterStatus === status
+                  ? 'bg-perplexity-primary text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+              }`}
+            >
+              {status === 'all' ? 'All' : status.split('_').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1)
+              ).join(' ')}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center space-x-2">
+        <span className="text-sm text-gray-500">Sort by:</span>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as SortOption)}
+          className="px-3 py-1 rounded-md text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 border-none focus:ring-2 focus:ring-perplexity-primary"
+        >
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="a-z">A-Z</option>
+          <option value="z-a">Z-A</option>
+        </select>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-8">
       <div className="border-b border-wiki-border pb-4">
@@ -325,27 +532,8 @@ export const DashboardContributions = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center space-x-4">
-        <span className="text-sm text-gray-500">Filter by:</span>
-        <div className="flex space-x-2">
-          {(['all', 'draft', 'under_review', 'published'] as const).map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`px-3 py-1 rounded-full text-sm ${
-                filterStatus === status
-                  ? 'bg-perplexity-primary text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
-              }`}
-            >
-              {status === 'all' ? 'All' : status.split('_').map(word => 
-                word.charAt(0).toUpperCase() + word.slice(1)
-              ).join(' ')}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Replace existing filters with new combined filters and sort */}
+      {renderFilters()}
 
       {/* Articles List */}
       {loading ? (
@@ -353,53 +541,7 @@ export const DashboardContributions = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-perplexity-primary"></div>
         </div>
       ) : filteredArticles.length > 0 ? (
-        <div className="space-y-4">
-          {filteredArticles.map(article => (
-            <div key={article.id} className="wiki-card hover:shadow-md transition-shadow border-l-4 pl-4" style={{
-              borderLeftColor: article.status === 'published' ? '#22c55e' : 
-                             article.status === 'under_review' ? '#eab308' : 
-                             '#94a3b8'
-            }}>
-              <div className="flex justify-between items-start">
-                <div className="space-y-2 flex-1">
-                  <div className="flex items-center space-x-3">
-                    <h3 className="text-xl font-linux-libertine hover:text-perplexity-primary">
-                      {article.title}
-                    </h3>
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${
-                      article.status === 'published' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
-                      article.status === 'under_review' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' :
-                      'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-400'
-                    }`}>
-                      {article.status.split('_').map(word => 
-                        word.charAt(0).toUpperCase() + word.slice(1)
-                      ).join(' ')}
-                    </span>
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-300 line-clamp-2 font-serif">
-                    {article.content.slice(0, 200)}...
-                  </p>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <span>{article.content.split(' ').length} words</span>
-                    <span>•</span>
-                    <span>Last modified: {new Date(article.updatedAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => navigate(`/dashboard/articles/${article.id}/edit`)}
-                    className="btn-secondary text-sm flex items-center space-x-1"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                    </svg>
-                    <span>Edit</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        renderArticleList()
       ) : (
         <div className="text-center py-8 text-gray-500">
           No articles found. Start by creating one or using AI Auto-Pilot!
