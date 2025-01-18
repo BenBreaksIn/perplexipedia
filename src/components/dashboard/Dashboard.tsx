@@ -2,7 +2,6 @@ import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppearance } from '../../contexts/AppearanceContext';
 import { DashboardProfile } from './DashboardProfile';
-import { DashboardActivity } from './DashboardActivity';
 import { DashboardContributions } from './DashboardContributions';
 import { DashboardSaved } from './DashboardSaved';
 import { DashboardSettings } from './DashboardSettings';
@@ -59,12 +58,6 @@ export const Dashboard: React.FC = () => {
                   className={`nav-link block ${isActive('profile') ? 'active' : ''}`}
                 >
                   Profile
-                </button>
-                <button
-                  onClick={() => navigate('/dashboard/activity')}
-                  className={`nav-link block ${isActive('activity') ? 'active' : ''}`}
-                >
-                  Recent Activity
                 </button>
                 <button
                   onClick={() => navigate('/dashboard/contributions')}
@@ -182,7 +175,6 @@ export const Dashboard: React.FC = () => {
           <div className="perplexipedia-card">
             <Routes>
               <Route path="profile" element={<DashboardProfile />} />
-              <Route path="activity" element={<DashboardActivity />} />
               <Route path="contributions" element={<DashboardContributions />} />
               <Route path="saved" element={<DashboardSaved />} />
               <Route path="settings" element={<DashboardSettings />} />

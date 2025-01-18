@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Article } from '../../types/article';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { Sidebar } from '../Sidebar';
+import { useAuth } from '../../contexts/AuthContext';
 
 export const ArticleView: React.FC = () => {
   const { id } = useParams();
+  const { currentUser } = useAuth();
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savingState, setSavingState] = useState<'idle' | 'saving'>('idle');
 
   useEffect(() => {
     const loadArticle = async () => {
@@ -33,6 +37,18 @@ export const ArticleView: React.FC = () => {
             ...articleData,
             id: docSnap.id
           });
+
+          // Check if the article is saved by the current user
+          if (currentUser) {
+            const savedRef = collection(db, 'saved_articles');
+            const q = query(
+              savedRef,
+              where('userId', '==', currentUser.uid),
+              where('articleId', '==', id)
+            );
+            const savedSnap = await getDocs(q);
+            setIsSaved(!savedSnap.empty);
+          }
         } else {
           setError('Article not found');
         }
@@ -45,7 +61,38 @@ export const ArticleView: React.FC = () => {
     };
 
     loadArticle();
-  }, [id]);
+  }, [id, currentUser]);
+
+  const handleSaveArticle = async () => {
+    if (!currentUser || !article) return;
+
+    try {
+      setSavingState('saving');
+      const savedArticleId = `${currentUser.uid}_${article.id}`;
+      
+      if (isSaved) {
+        // Unsave the article
+        await deleteDoc(doc(db, 'saved_articles', savedArticleId));
+        setIsSaved(false);
+      } else {
+        // Save the article
+        await setDoc(doc(db, 'saved_articles', savedArticleId), {
+          id: savedArticleId,
+          userId: currentUser.uid,
+          articleId: article.id,
+          title: article.title,
+          excerpt: article.content.slice(0, 200) + '...',
+          savedAt: new Date(),
+          lastModified: article.updatedAt
+        });
+        setIsSaved(true);
+      }
+    } catch (error) {
+      console.error('Error saving/unsaving article:', error);
+    } finally {
+      setSavingState('idle');
+    }
+  };
 
   const renderInfoBox = () => {
     if (!article?.infobox) return null;
@@ -141,11 +188,44 @@ export const ArticleView: React.FC = () => {
       <main className="flex-1 transition-all duration-300 ease-in-out">
         <div className="perplexipedia-card">
           <article className="prose dark:prose-invert max-w-none">
-            <h1 className="text-4xl font-bold mb-4">{article.title}</h1>
+            <div className="flex justify-between items-start mb-4">
+              <h1 className="text-4xl font-bold mb-0">{article?.title}</h1>
+              {currentUser && (
+                <button
+                  onClick={handleSaveArticle}
+                  disabled={savingState === 'saving'}
+                  className={`p-2 rounded-full transition-colors duration-200 ${
+                    isSaved 
+                      ? 'text-perplexity-primary hover:bg-perplexity-primary/10' 
+                      : 'text-gray-400 hover:text-perplexity-primary hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                  title={isSaved ? 'Remove from saved articles' : 'Save article'}
+                >
+                  {savingState === 'saving' ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                  ) : (
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-6 w-6" 
+                      fill={isSaved ? 'currentColor' : 'none'} 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" 
+                      />
+                    </svg>
+                  )}
+                </button>
+              )}
+            </div>
             <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-8 space-x-4">
-              <span>By {article.author || 'Anonymous'}</span>
+              <span>By {article?.author || 'Anonymous'}</span>
               <span>•</span>
-              <span>Last updated: {new Date(article.updatedAt).toLocaleDateString()}</span>
+              <span>Last updated: {new Date(article?.updatedAt || '').toLocaleDateString()}</span>
             </div>
             <div className="perplexipedia-article">
               {renderInfoBox()}
@@ -210,7 +290,7 @@ export const ArticleView: React.FC = () => {
                   )
                 }}
               >
-                {article.content}
+                {article?.content || ''}
               </ReactMarkdown>
               {renderImages()}
             </div>
