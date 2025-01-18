@@ -500,8 +500,17 @@ export const DashboardContributions = () => {
           <div className="flex justify-between items-start">
             <div className="space-y-2 flex-1">
               <div className="flex items-center space-x-3">
-                <h3 className="text-xl font-linux-libertine hover:text-perplexity-primary">
-                  {article.title}
+                <h3 className="text-lg font-medium">
+                  {article.status === 'published' ? (
+                    <a 
+                      href={`/articles/${article.id}`}
+                      className="hover:text-perplexity-primary"
+                    >
+                      {article.title}
+                    </a>
+                  ) : (
+                    article.title
+                  )}
                 </h3>
                 <span className={`px-2 py-0.5 rounded-full text-xs ${
                   article.status === 'published' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
