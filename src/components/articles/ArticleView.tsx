@@ -193,7 +193,7 @@ export const ArticleView: React.FC = () => {
 
   return (
     <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
-      <Sidebar />
+      <Sidebar content={article?.content} />
       <main className="flex-1 transition-all duration-300 ease-in-out">
         <div className="perplexipedia-card">
           <article className="prose dark:prose-invert max-w-none">
@@ -244,9 +244,18 @@ export const ArticleView: React.FC = () => {
                 remarkPlugins={[remarkGfm]} 
                 rehypePlugins={[rehypeRaw]}
                 components={{
-                  h1: ({node, ...props}) => <h1 className="text-4xl font-bold mt-8 mb-4" {...props} />,
-                  h2: ({node, ...props}) => <h2 className="text-3xl font-bold mt-6 mb-3" {...props} />,
-                  h3: ({node, ...props}) => <h3 className="text-2xl font-bold mt-5 mb-2" {...props} />,
+                  h1: ({node, ...props}) => {
+                    const id = props.children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                    return <h1 id={id} className="text-4xl font-bold mt-8 mb-4" {...props} />;
+                  },
+                  h2: ({node, ...props}) => {
+                    const id = props.children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                    return <h2 id={id} className="text-3xl font-bold mt-6 mb-3" {...props} />;
+                  },
+                  h3: ({node, ...props}) => {
+                    const id = props.children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                    return <h3 id={id} className="text-2xl font-bold mt-5 mb-2" {...props} />;
+                  },
                   p: ({node, children, ...props}) => {
                     // Check if the paragraph only contains an image
                     const childrenArray = React.Children.toArray(children);

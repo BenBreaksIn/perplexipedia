@@ -1,12 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppearance } from '../contexts/AppearanceContext';
 import { useLocation } from 'react-router-dom';
 
-export const Sidebar: React.FC = () => {
+interface TableOfContentsItem {
+  level: number;
+  text: string;
+  id: string;
+}
+
+export const Sidebar: React.FC<{ content?: string }> = ({ content }) => {
   const { isMenuOpen, fontSize, setFontSize, colorMode, setColorMode } = useAppearance();
   const [showAppearance, setShowAppearance] = useState(true);
   const [showCopySuccess, setShowCopySuccess] = useState(false);
+  const [tableOfContents, setTableOfContents] = useState<TableOfContentsItem[]>([]);
   const location = useLocation();
+
+  useEffect(() => {
+    if (content) {
+      // Extract headers from markdown content
+      const headerRegex = /^(#{1,6})\s+(.+)$/gm;
+      const headers: TableOfContentsItem[] = [];
+      let match;
+
+      while ((match = headerRegex.exec(content)) !== null) {
+        const level = match[1].length;
+        const text = match[2];
+        const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        headers.push({ level, text, id });
+      }
+
+      setTableOfContents(headers);
+    }
+  }, [content]);
 
   const handleCopyLink = async () => {
     try {
@@ -19,9 +44,30 @@ export const Sidebar: React.FC = () => {
     }
   };
 
+  const isArticlePage = location.pathname.startsWith('/articles/') && !location.pathname.includes('/edit');
+
   return (
     <aside className={`${isMenuOpen ? 'md:block' : 'md:hidden'} hidden w-64 pr-8 transition-all duration-300 ease-in-out`}>
       <nav className="space-y-6">
+        {/* Table of Contents (only show on article pages) */}
+        {isArticlePage && tableOfContents.length > 0 && (
+          <div>
+            <h3 className="section-title">Contents</h3>
+            <div className="space-y-1">
+              {tableOfContents.map((header, index) => (
+                <a
+                  key={index}
+                  href={`#${header.id}`}
+                  className={`nav-link block pl-${(header.level - 1) * 4}`}
+                  style={{ paddingLeft: `${(header.level - 1) * 1}rem` }}
+                >
+                  {header.text}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Tools Section */}
         <div>
           <h3 className="section-title">Tools</h3>
