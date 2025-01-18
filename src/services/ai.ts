@@ -515,7 +515,7 @@ Do not include any other text or formatting.`
    - 1-3 specific categories
    - 1-2 administrative categories (if needed, e.g., "Articles needing citations")
 
-3. Follow Wikipedia's naming conventions:
+3. Follow Encyclopedia naming conventions:
    - Use plural forms for most categories
    - Capitalize first letter of each word
    - Use natural language order
