@@ -28,6 +28,7 @@ export const DashboardContributions = () => {
   const { currentUser } = useAuth();
   const [showAutoPilot, setShowAutoPilot] = useState(false);
   const [step, setStep] = useState(1);
+  const [inputValue, setInputValue] = useState('');
   const [config, setConfig] = useState<AutoPilotConfig>({
     numberOfArticles: 1,
     minWordCount: 500,
@@ -41,6 +42,25 @@ export const DashboardContributions = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
+
+  const addTopic = (topic: string) => {
+    const trimmedTopic = topic.trim();
+    if (trimmedTopic && !config.selectedTopics.includes(trimmedTopic)) {
+      setConfig(prev => ({
+        ...prev,
+        selectedTopics: [...prev.selectedTopics, trimmedTopic]
+      }));
+      setError(null);
+    }
+    setInputValue('');
+  };
+
+  const removeTopic = (topicToRemove: string) => {
+    setConfig(prev => ({
+      ...prev,
+      selectedTopics: prev.selectedTopics.filter(topic => topic !== topicToRemove)
+    }));
+  };
 
   useEffect(() => {
     loadArticles();
@@ -77,6 +97,7 @@ export const DashboardContributions = () => {
     setProgress(0);
     const totalArticles = config.numberOfArticles;
     let generatedCount = 0;
+    const maxRetries = 3; // Maximum number of retries per topic
 
     try {
       // Generate one article at a time, cycling through topics if needed
@@ -84,53 +105,71 @@ export const DashboardContributions = () => {
         // Get the current topic (cycle through topics if needed)
         const topicIndex = generatedCount % config.selectedTopics.length;
         const currentTopic = config.selectedTopics[topicIndex];
+        let retryCount = 0;
+        let success = false;
         
-        console.log(`Generating article ${generatedCount + 1} of ${totalArticles} for topic: ${currentTopic}`);
-        
-        // Generate just one article for this topic
-        const articles = await generateArticles(currentTopic, 1);
-        console.log(`Generated articles:`, articles);
-        
-        if (!articles || articles.length === 0) {
-          setError(`Failed to generate article for topic: ${currentTopic}`);
-          continue;
-        }
-        
-        // Save the generated article
-        const result = articles[0];
-        if (result) {
-          const now = new Date();
-          const articleId = crypto.randomUUID();
-          await setDoc(doc(db, 'articles', articleId), {
-            ...result,
-            id: articleId,
-            authorId: currentUser.uid,
-            createdAt: now.toISOString(),
-            updatedAt: now.toISOString(),
-            status: 'draft'
-          });
-          generatedCount++;
-          setProgress((generatedCount / totalArticles) * 100);
+        while (retryCount < maxRetries && !success) {
+          console.log(`Generating article ${generatedCount + 1} of ${totalArticles} for topic: ${currentTopic} (Attempt ${retryCount + 1})`);
+          
+          // Generate just one article for this topic
+          const articles = await generateArticles(currentTopic, 1);
+          
+          if (articles && articles.length > 0) {
+            const result = articles[0];
+            const now = new Date();
+            const articleId = crypto.randomUUID();
+            await setDoc(doc(db, 'articles', articleId), {
+              ...result,
+              id: articleId,
+              authorId: currentUser.uid,
+              createdAt: now.toISOString(),
+              updatedAt: now.toISOString(),
+              status: 'draft'
+            });
+            generatedCount++;
+            setProgress((generatedCount / totalArticles) * 100);
+            success = true;
+            setError(null);
+          } else {
+            retryCount++;
+            if (retryCount < maxRetries) {
+              setError(`Retrying article generation for "${currentTopic}" (Attempt ${retryCount + 1} of ${maxRetries})`);
+              // Wait a short moment before retrying
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            } else {
+              setError(`Failed to generate article for "${currentTopic}" after ${maxRetries} attempts. Moving to next topic...`);
+              // Wait a moment before moving to next topic
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              break;
+            }
+          }
         }
       }
 
       if (generatedCount === 0) {
-        setError('No articles were generated. Please try again.');
+        setError('No articles were generated. Please try again with different topics.');
         return;
+      }
+
+      if (generatedCount < totalArticles) {
+        setError(`Generated ${generatedCount} out of ${totalArticles} requested articles. Some topics failed.`);
       }
 
       // Reload articles to show new ones
       await loadArticles();
 
-      // Reset auto-pilot only if we successfully generated articles
-      setShowAutoPilot(false);
-      setStep(1);
-      setConfig({
-        numberOfArticles: 1,
-        minWordCount: 500,
-        maxWordCount: 2000,
-        selectedTopics: []
-      });
+      // Only close the modal if we generated at least one article
+      if (generatedCount > 0) {
+        // Reset auto-pilot
+        setShowAutoPilot(false);
+        setStep(1);
+        setConfig({
+          numberOfArticles: 1,
+          minWordCount: 500,
+          maxWordCount: 2000,
+          selectedTopics: []
+        });
+      }
     } catch (error) {
       console.error('Error generating articles:', error);
       setError('Failed to generate articles. Please try again.');
@@ -253,18 +292,53 @@ export const DashboardContributions = () => {
   const renderStep3 = () => (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium mb-2">Select Topics</label>
-        <div className="space-y-2">
-          <input
-            type="text"
-            placeholder="Enter topics (comma-separated)"
-            value={config.selectedTopics.join(', ')}
-            onChange={(e) => setConfig(prev => ({ ...prev, selectedTopics: e.target.value.split(',').map(t => t.trim()).filter(t => t) }))}
-            className="search-input w-full"
-          />
+        <label className="block text-sm font-medium mb-2">What would you like to write about?</label>
+        <div className="space-y-4">
+          {/* Selected Topics Tags */}
+          <div className="flex flex-wrap gap-2">
+            {config.selectedTopics.map(topic => (
+              <span
+                key={topic}
+                className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-perplexity-primary/10 text-perplexity-primary"
+              >
+                {topic}
+                <button
+                  onClick={() => removeTopic(topic)}
+                  className="ml-2 hover:text-red-500 transition-colors"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+
+          {/* Topic Input */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Enter any topic you're interested in (e.g., 'dogs', 'space', 'history')"
+              value={inputValue}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                setError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && inputValue) {
+                  e.preventDefault();
+                  addTopic(inputValue);
+                }
+              }}
+              className="search-input w-full"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Press Enter after each topic. Our AI will handle the rest!
+            </p>
+          </div>
+
           {error && <p className="text-sm text-red-500">{error}</p>}
         </div>
       </div>
+
       <div className="flex justify-between">
         <button
           onClick={() => setStep(2)}
