@@ -26,7 +26,7 @@ export const DashboardProfile: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-wiki-border pb-4">
+      <div className="border-b border-perplexipedia-border pb-4">
         <h2 className="text-2xl font-linux-libertine section-title">Profile</h2>
         <p className="text-gray-600 dark:text-gray-400">Manage your personal information and preferences</p>
       </div>
@@ -100,15 +100,15 @@ export const DashboardProfile: React.FC = () => {
         <div>
           <h3 className="text-lg font-medium mb-4">Account Statistics</h3>
           <div className="grid md:grid-cols-3 gap-4">
-            <div className="wiki-card bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800">
+            <div className="perplexipedia-card bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800">
               <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Articles Created</h4>
               <p className="text-2xl font-medium text-black dark:text-white">0</p>
             </div>
-            <div className="wiki-card bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800">
+            <div className="perplexipedia-card bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800">
               <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Edits</h4>
               <p className="text-2xl font-medium text-black dark:text-white">0</p>
             </div>
-            <div className="wiki-card bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800">
+            <div className="perplexipedia-card bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800">
               <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Articles Saved</h4>
               <p className="text-2xl font-medium text-black dark:text-white">0</p>
             </div>

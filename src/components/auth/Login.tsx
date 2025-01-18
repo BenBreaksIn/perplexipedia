@@ -29,7 +29,7 @@ export const Login: React.FC = () => {
   return (
     <div className="flex-1 container mx-auto px-4 py-8 flex items-start">
       <div className="max-w-md mx-auto w-full">
-        <div className="wiki-card">
+        <div className="perplexipedia-card">
           <h2 className="text-2xl font-linux-libertine mb-6 section-title">Log In</h2>
           
           {error && (

@@ -18,7 +18,7 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-white dark:bg-gray-900 border-b border-wiki-border">
+    <header className="bg-white dark:bg-gray-900 border-b border-perplexipedia-border">
       <div className="container !max-w-[1672px] mx-auto px-4 py-2 flex justify-between items-center">
         <div className="flex items-center space-x-4">
           <div 
@@ -84,7 +84,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Page Tabs with Toggle */}
-      <div className="container !max-w-[1672px] mx-auto px-4 flex items-center border-b border-wiki-border">
+      <div className="container !max-w-[1672px] mx-auto px-4 flex items-center border-b border-perplexipedia-border">
         <button 
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           className="menu-toggle md:flex hidden items-center justify-center mr-2 -mb-[2px] hover:bg-gray-100 dark:hover:bg-gray-800"

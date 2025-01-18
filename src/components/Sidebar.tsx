@@ -45,7 +45,7 @@ export const Sidebar: React.FC = () => {
           )}
           
           {showAppearance && (
-            <div className="wiki-card space-y-4">
+            <div className="perplexipedia-card space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="section-title mb-0">Appearance</h3>
                 <button

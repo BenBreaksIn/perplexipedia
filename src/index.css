@@ -5,14 +5,14 @@
 :root {
   --perplexity-primary: #2563eb;
   --perplexity-secondary: #1e40af;
-  --wiki-background: #f8f9fa;
-  --wiki-border: #a2a9b1;
+  --perplexipedia-background: #f8f9fa;
+  --perplexipedia-border: #a2a9b1;
   --sidebar-width: 16rem;
 }
 
 [data-theme='dark'] {
-  --wiki-background: #000000;
-  --wiki-border: #333333;
+  --perplexipedia-background: #000000;
+  --perplexipedia-border: #333333;
   --perplexity-primary: #ffffff;
   --perplexity-secondary: #e0e0e0;
   --text-primary: #ffffff;
@@ -80,7 +80,7 @@
   }
 
   /* Rest of the components remain the same */
-  .wiki-link {
+  .perplexipedia-link {
     @apply text-[#0645ad] hover:text-[#0b0080] hover:underline 
            dark:text-white dark:hover:text-gray-300;
   }
@@ -105,8 +105,8 @@
   }
 
   /* Card styles */
-  .wiki-card {
-    @apply border border-wiki-border rounded-lg p-6 
+  .perplexipedia-card {
+    @apply border border-perplexipedia-border rounded-lg p-6 
            bg-white dark:bg-[#121212]
            hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20
            transition-all duration-200;
@@ -163,7 +163,7 @@
 
   /* Input styles */
   .search-input {
-    @apply px-4 py-2 rounded-full border border-wiki-border
+    @apply px-4 py-2 rounded-full border border-perplexipedia-border
            bg-white dark:bg-[#121212]
            text-gray-900 dark:text-white
            placeholder-gray-500 dark:placeholder-gray-400

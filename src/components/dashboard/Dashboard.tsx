@@ -103,7 +103,7 @@ export const Dashboard: React.FC = () => {
             {/* Appearance Settings */}
             <div>
               <h3 className="section-title">Appearance</h3>
-              <div className="wiki-card space-y-4">
+              <div className="perplexipedia-card space-y-4">
                 {/* Font Size */}
                 <div className="space-y-2">
                   <h4 className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Font size</h4>
@@ -179,7 +179,7 @@ export const Dashboard: React.FC = () => {
 
         {/* Main Content */}
         <div className="flex-1 transition-all duration-300 ease-in-out">
-          <div className="wiki-card">
+          <div className="perplexipedia-card">
             <Routes>
               <Route path="profile" element={<DashboardProfile />} />
               <Route path="activity" element={<DashboardActivity />} />

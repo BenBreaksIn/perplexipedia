@@ -260,7 +260,7 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
         </>
       ) : (
         <div className="prose max-w-none">
-          <div className="wiki-article">
+          <div className="perplexipedia-article">
             {renderInfoBox()}
             <ReactMarkdown>{content}</ReactMarkdown>
             {images.length > 0 && (

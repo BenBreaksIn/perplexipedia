@@ -493,11 +493,14 @@ export const DashboardContributions = () => {
   const renderArticleList = () => (
     <div className="space-y-4">
       {filteredArticles.map(article => (
-        <div key={article.id} className="wiki-card hover:shadow-md transition-shadow border-l-4 pl-4" style={{
-          borderLeftColor: article.status === 'published' ? '#22c55e' : 
-                         article.status === 'under_review' ? '#eab308' : 
-                         '#94a3b8'
-        }}>
+        <div 
+          key={article.id} 
+          className="perplexipedia-card hover:shadow-md transition-shadow border-l-4 pl-4" 
+          style={{
+            borderLeftColor: article.status === 'published' ? '#22c55e' : 
+                             article.status === 'under_review' ? '#eab308' : '#ef4444'
+          }}
+        >
           <div className="flex justify-between items-start">
             <div className="space-y-2 flex-1">
               <div className="flex items-center space-x-3">
@@ -580,7 +583,7 @@ export const DashboardContributions = () => {
 
   return (
     <div className="space-y-8">
-      <div className="border-b border-wiki-border pb-4">
+      <div className="border-b border-perplexipedia-border pb-4">
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-linux-libertine section-title">Your Contributions</h2>

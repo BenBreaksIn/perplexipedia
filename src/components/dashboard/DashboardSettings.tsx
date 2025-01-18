@@ -121,7 +121,7 @@ export const DashboardSettings: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="border-b border-wiki-border pb-4">
+        <div className="border-b border-perplexipedia-border pb-4">
           <h2 className="text-2xl font-linux-libertine section-title">Settings</h2>
           <p className="text-gray-600 dark:text-gray-400">Loading your settings...</p>
         </div>
@@ -135,7 +135,7 @@ export const DashboardSettings: React.FC = () => {
   if (error) {
     return (
       <div className="space-y-6">
-        <div className="border-b border-wiki-border pb-4">
+        <div className="border-b border-perplexipedia-border pb-4">
           <h2 className="text-2xl font-linux-libertine section-title">Settings</h2>
           <p className="text-red-600 dark:text-red-400">{error}</p>
         </div>
@@ -145,7 +145,7 @@ export const DashboardSettings: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="border-b border-wiki-border pb-4">
+      <div className="border-b border-perplexipedia-border pb-4">
         <h2 className="text-2xl font-linux-libertine section-title">Settings</h2>
         <p className="text-gray-600 dark:text-gray-400">Manage your account preferences and notifications</p>
       </div>
@@ -153,7 +153,7 @@ export const DashboardSettings: React.FC = () => {
       {/* Account Settings */}
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Account Settings</h3>
-        <div className="wiki-card space-y-4">
+        <div className="perplexipedia-card space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h4 className="text-sm font-medium">Email Notifications</h4>
@@ -272,7 +272,7 @@ export const DashboardSettings: React.FC = () => {
         <h3 className="text-lg font-medium">Notification Settings</h3>
         <div className="space-y-4">
           {notificationSettings.map((setting) => (
-            <div key={setting.id} className="wiki-card flex items-center justify-between">
+            <div key={setting.id} className="perplexipedia-card flex items-center justify-between">
               <div>
                 <h4 className="text-sm font-medium">{setting.label}</h4>
                 <p className="text-sm text-gray-500 dark:text-gray-400">

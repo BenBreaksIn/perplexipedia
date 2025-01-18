@@ -2,7 +2,7 @@ import React from 'react';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-white dark:bg-gray-900 border-t border-wiki-border mt-8">
+    <footer className="bg-white dark:bg-gray-900 border-t border-perplexipedia-border mt-8">
       <div className="container !max-w-[1672px] mx-auto px-4 py-6">
         <div className="grid md:grid-cols-4 gap-8">
           <div>
@@ -37,7 +37,7 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
         </div>
-        <div className="mt-8 pt-6 border-t border-wiki-border text-sm text-gray-500 dark:text-gray-400">
+        <div className="mt-8 pt-6 border-t border-perplexipedia-border text-sm text-gray-500 dark:text-gray-400">
           <p>Text is available under the Creative Commons Attribution-ShareAlike License; additional terms may apply.</p>
           <p className="mt-2">© 2025 Perplexipedia. All rights reserved.</p>
         </div>
