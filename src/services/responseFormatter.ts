@@ -32,24 +32,40 @@ export const formatPerplexityResponse = (response: any, citations: Array<{ id: n
     // Format each section
     const formattedSections = sections.map((section: string) => {
       // Ensure proper spacing around headings while preserving other formatting
-      return section.replace(/##\s+([^\n]+)/g, '\n## $1\n')
-                   .replace(/###\s+([^\n]+)/g, '\n### $1\n')
-                   .trim();
+      return section
+        .replace(/##\s+([^\n]+)/g, '\n## $1\n')
+        .replace(/###\s+([^\n]+)/g, '\n### $1\n')
+        // Fix bullet point formatting
+        .replace(/^-\s*([^\n]+)/gm, '- $1')  // Fix bullet points with single space
+        .replace(/^\*\s*([^\n]+)/gm, '* $1')  // Fix asterisk bullet points
+        .trim();
     });
 
     // Add citations section
     const references: string[] = [];
     if (citations.length > 0) {
-      formattedSections.push('\n## References\n');
+      formattedSections.push('\n## References');
       citations.forEach(citation => {
-        const ref = `${citation.id}. ${citation.url}`;
-        references.push(ref);
+        // Try to make URL more readable by removing protocol and trailing slashes
+        const cleanUrl = citation.url
+          .replace(/^https?:\/\//, '')
+          .replace(/\/$/, '')
+          .split('/')
+          .slice(0, 3) // Take only domain and first path segment
+          .join('/');
+
+        // Format reference like OpenAI style
+        const ref = `[${citation.id}] ${cleanUrl}`;
+        references.push(citation.url);
         formattedSections.push(ref);
       });
     }
 
     // Combine sections with proper spacing
-    const formattedContent = formattedSections.join('\n\n').trim();
+    const formattedContent = formattedSections
+      .join('\n\n')
+      .replace(/\n{3,}/g, '\n\n') // Replace multiple newlines with double newlines
+      .trim();
 
     return {
       title: title || 'Untitled Article',
