@@ -8,6 +8,15 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { Sidebar } from '../Sidebar';
 import { useAuth } from '../../contexts/AuthContext';
+import { format } from 'date-fns';
+import { Timestamp } from 'firebase/firestore';
+
+const formatDate = (date: Date | Timestamp) => {
+  if (date instanceof Timestamp) {
+    return format(date.toDate(), 'PPP p');
+  }
+  return format(new Date(date), 'PPP p');
+};
 
 export const ArticleView: React.FC = () => {
   const { id } = useParams();
@@ -225,7 +234,9 @@ export const ArticleView: React.FC = () => {
             <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-8 space-x-4">
               <span>By {article?.author || 'Anonymous'}</span>
               <span>•</span>
-              <span>Last updated: {new Date(article?.updatedAt || '').toLocaleDateString()}</span>
+              <span>Published: {formatDate(article?.createdAt)}</span>
+              <span>•</span>
+              <span>Last updated: {formatDate(article?.updatedAt)}</span>
             </div>
             <div className="perplexipedia-article">
               {renderInfoBox()}
