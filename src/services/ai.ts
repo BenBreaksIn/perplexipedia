@@ -330,6 +330,10 @@ export class AIService {
             content: `You are an expert encyclopedia article writer with fact-checking capabilities.
             Create a comprehensive, well-structured article about the given topic.
             
+            CRITICAL REQUIREMENTS:
+            - The article MUST be between ${minWordCount} and ${maxWordCount} words
+            - Do NOT submit if word count is outside the specified range
+            
             Follow these guidelines:
             1. Be objective and unbiased
             2. Use clear, academic language
@@ -347,7 +351,6 @@ export class AIService {
             10. DO NOT include the article title in the content
             11. DO NOT repeat infobox information in the main content
             12. Include "External links" section when relevant
-            13. STRICTLY follow the requested word count range provided in the user's prompt
             
             Return your response in this JSON format:
             {
