@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Article } from '../../types/article';
 import { ArticleEditor } from './ArticleEditor';
-import { ArticleHistory } from './ArticleHistory';
+import { ArticleManagementHistory } from './ArticleManagementHistory';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -177,7 +177,7 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
                 />
             ) : (
                 article && (
-                    <ArticleHistory
+                    <ArticleManagementHistory
                         article={article}
                         onRestoreVersion={handleRestoreVersion}
                     />

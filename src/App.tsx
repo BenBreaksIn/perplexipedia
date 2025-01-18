@@ -8,6 +8,8 @@ import { Login } from './components/auth/Login'
 import { Signup } from './components/auth/Signup'
 import { Dashboard } from './components/dashboard/Dashboard'
 import { ArticleView } from './components/articles/ArticleView'
+import { ArticleSource } from './components/articles/ArticleSource'
+import { ArticleHistory } from './components/articles/ArticleHistory'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 
 function AppContent() {
@@ -25,6 +27,8 @@ function AppContent() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/dashboard/*" element={<Dashboard />} />
           <Route path="/articles/:id" element={<ArticleView />} />
+          <Route path="/articles/:id/source" element={<ArticleSource />} />
+          <Route path="/articles/:id/history" element={<ArticleHistory />} />
           <Route path="/" element={
             <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
               <Sidebar />

@@ -1,12 +1,13 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppearance } from '../contexts/AppearanceContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const { isMenuOpen, setIsMenuOpen } = useAppearance();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     try {
@@ -14,6 +15,32 @@ export const Header: React.FC = () => {
       navigate('/');
     } catch (error) {
       console.error('Failed to log out:', error);
+    }
+  };
+
+  const getTabPath = () => {
+    const path = location.pathname;
+    if (path.includes('/source')) return 'source';
+    if (path.includes('/history')) return 'history';
+    return 'read';
+  };
+
+  const currentTab = getTabPath();
+  const articleId = location.pathname.split('/')[2]; // Get article ID from URL
+
+  const handleTabClick = (tab: string) => {
+    if (!articleId) return;
+    
+    switch (tab) {
+      case 'read':
+        navigate(`/articles/${articleId}`);
+        break;
+      case 'source':
+        navigate(`/articles/${articleId}/source`);
+        break;
+      case 'history':
+        navigate(`/articles/${articleId}/history`);
+        break;
     }
   };
 
@@ -98,19 +125,27 @@ export const Header: React.FC = () => {
               strokeWidth="1.5" 
               strokeLinecap="round"
             />
-            <path 
-              className={`transform transition-all duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0'}`}
-              d="M12 8.5H16M12 12H16M12 15.5H16" 
-              stroke="currentColor" 
-              strokeWidth="1.5" 
-              strokeLinecap="round"
-            />
           </svg>
         </button>
         <div className="flex flex-1">
-          <a href="#" className="page-tab active">Read</a>
-          <a href="#" className="page-tab">View source</a>
-          <a href="#" className="page-tab">View history</a>
+          <button 
+            onClick={() => handleTabClick('read')}
+            className={`page-tab ${currentTab === 'read' ? 'active' : ''}`}
+          >
+            Read
+          </button>
+          <button 
+            onClick={() => handleTabClick('source')}
+            className={`page-tab ${currentTab === 'source' ? 'active' : ''}`}
+          >
+            View source
+          </button>
+          <button 
+            onClick={() => handleTabClick('history')}
+            className={`page-tab ${currentTab === 'history' ? 'active' : ''}`}
+          >
+            View history
+          </button>
         </div>
       </div>
     </header>
