@@ -24,22 +24,48 @@ export class AIService {
         messages: [
           {
             role: "system",
-            content: `You are a research assistant. Search for and provide reliable sources about the given topic.
-            You must respond with ONLY a JSON array of strings containing URLs and citations.
-            Focus on:
-            1. Academic sources
-            2. Reputable news outlets
-            3. Official documentation
-            4. Peer-reviewed papers
+            content: `You are a research assistant. Search for reliable, non-biased sources from:
+            1. Academic journals and publications
+            2. Government research institutions
+            3. Scientific databases (e.g. PubMed, ScienceDirect)
+            4. Educational institutions (.edu domains)
+            5. Professional organizations and industry associations
+            6. Peer-reviewed publications
+            7. Research institutes and think tanks
+            8. Official statistics bureaus
+            9. Industry standard bodies
+            10. Technical documentation and specifications
             
-            Example response format:
-            ["source1", "source2", "source3"]
+            Return ONLY a JSON array of source objects in this format:
+            {
+              "sources": [{
+                "url": "source url",
+                "title": "source title",
+                "publisher": "publishing organization",
+                "type": "type of source (academic/government/research/etc)",
+                "year": "publication year"
+              }]
+            }
             
-            Do not include any other text or formatting. Only return the JSON array.`
+            Ensure all sources are:
+            - Recent (preferably within last 5 years unless historical)
+            - Factually accurate
+            - Non-biased and objective
+            - From reputable organizations
+            - Primary sources where possible
+            - Peer-reviewed when applicable
+            
+            Do not include:
+            - Wikipedia articles
+            - Personal blogs
+            - Social media posts
+            - Opinion pieces
+            - Unreliable news sites
+            - Commercial product pages`
           },
           {
             role: "user",
-            content: `Find reliable sources about: ${topic}`
+            content: `Find reliable sources for an article about: ${topic}`
           }
         ],
         temperature: 0.3,
@@ -60,33 +86,59 @@ export class AIService {
     }
   }
 
-  private async verifyFacts(content: string, sources: string[]): Promise<boolean> {
+  private async verifyFacts(content: string, sources: any[]): Promise<boolean> {
     try {
       const response = await this.openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: `You are a fact-checking assistant. Your task is to verify if the given content is supported by the provided sources. 
-            Be extremely strict about verification. Only return true if the facts can be directly verified from the sources.
-            Consider:
-            1. Accuracy of claims
-            2. Currency of information
-            3. Reliability of sources
-            4. Potential biases
+            content: `You are a fact-checking assistant. Verify if the given content is supported by the provided sources.
             
-            Return your response as a boolean (true/false) with a brief explanation.`
+            Use this verification framework:
+            1. Core Facts (70% weight):
+               - Key claims and statistics
+               - Historical dates and events
+               - Scientific/technical information
+            
+            2. Supporting Details (30% weight):
+               - Contextual information
+               - Background details
+               - General knowledge claims
+            
+            Verification levels:
+            - Strong verification (100%): Direct source confirmation
+            - Moderate verification (70%): Supported by multiple sources indirectly
+            - Weak verification (30%): General alignment with source material
+            - No verification (0%): Cannot be confirmed from sources
+            
+            Calculate overall verification score:
+            1. For each claim, assign verification level
+            2. Weight core facts vs supporting details
+            3. Return true if overall score > 70%
+            
+            Return JSON response:
+            {
+              "verified": boolean,
+              "score": number (0-100),
+              "analysis": {
+                "core_facts_score": number,
+                "supporting_details_score": number,
+                "unverified_claims": string[]
+              }
+            }`
           },
           {
             role: "user",
-            content: `Content: ${content}\nSources: ${sources.join(', ')}`
+            content: `Content: ${content}\nSources: ${JSON.stringify(sources)}`
           }
         ],
-        temperature: 0.3
+        temperature: 0.3,
+        response_format: { type: "json_object" }
       });
 
-      const result = response.choices[0].message.content || '';
-      return result.toLowerCase().includes('true');
+      const result = JSON.parse(response.choices[0].message.content || '{}');
+      return result.verified === true;
     } catch (error) {
       console.error('Error verifying facts:', error);
       return false;
@@ -162,25 +214,100 @@ export class AIService {
     }
   }
 
-  async generateArticle(title: string): Promise<Partial<Article> | null> {
+  private async checkForDuplicates(title: string, content: string, existingArticles: Article[]): Promise<{
+    isDuplicate: boolean;
+    similarArticles: Array<{id: string; title: string; similarity: number}>;
+    reason?: string;
+  }> {
     try {
-      // 1. Generate initial research and sources
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a duplicate content detection expert. Analyze the proposed article against existing articles to prevent duplicates.
+
+            Check for:
+            1. Title similarity (40% weight):
+               - Exact matches
+               - Similar meanings/synonyms
+               - Subset/superset relationships
+            
+            2. Content similarity (60% weight):
+               - Main topic overlap
+               - Key concepts coverage
+               - Structural similarity
+               - Fact/information overlap
+            
+            Return JSON response:
+            {
+              "isDuplicate": boolean,
+              "similarity_score": number (0-100),
+              "similar_articles": [{
+                "id": string,
+                "title": string,
+                "similarity": number (0-100)
+              }],
+              "reason": string (if duplicate),
+              "recommendation": string (if duplicate)
+            }`
+          },
+          {
+            role: "user",
+            content: `Proposed article:
+            Title: ${title}
+            Content: ${content}
+            
+            Existing articles:
+            ${JSON.stringify(existingArticles.map(a => ({
+              id: a.id,
+              title: a.title,
+              content: a.content
+            })))}`
+          }
+        ],
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+      });
+
+      const result = JSON.parse(response.choices[0].message.content || '{}');
+      return {
+        isDuplicate: result.isDuplicate || false,
+        similarArticles: result.similar_articles || [],
+        reason: result.reason
+      };
+    } catch (error) {
+      console.error('Error checking for duplicates:', error);
+      return { isDuplicate: false, similarArticles: [] };
+    }
+  }
+
+  async generateArticle(title: string, existingArticles: Article[] = []): Promise<Partial<Article> | null> {
+    try {
+      // 1. Check for duplicates before proceeding
+      const initialDupeCheck = await this.checkForDuplicates(title, "", existingArticles);
+      if (initialDupeCheck.isDuplicate) {
+        console.error('Duplicate article detected:', initialDupeCheck.reason);
+        return null;
+      }
+
+      // 2. Generate initial research and sources
       const sources = await this.searchSources(title);
       if (!sources.length) {
         console.error('No sources found');
         return null;
       }
 
-      // 2. Search for relevant images
+      // 3. Search for relevant images
       const images = await this.searchImages(title);
 
-      // 3. Generate the article with integrated fact verification and images
+      // 4. Generate the article with integrated fact verification and images
       const response = await this.openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: `You are an expert wiki article writer with fact-checking capabilities.
+            content: `You are an expert encyclopedia article writer with fact-checking capabilities.
             Create a comprehensive, well-structured article about the given topic.
             
             Follow these guidelines:
@@ -221,31 +348,38 @@ export class AIService {
         const content = articleData.content;
         if (!content) return null;
 
-        // 4. Verify facts before proceeding
+        // Final duplicate check with full content
+        const finalDupeCheck = await this.checkForDuplicates(title, content, existingArticles);
+        if (finalDupeCheck.isDuplicate) {
+          console.error('Duplicate content detected:', finalDupeCheck.reason);
+          return null;
+        }
+
+        // 5. Verify facts before proceeding
         const isFactual = await this.verifyFacts(content, sources);
         if (!isFactual) {
           console.error('Failed to verify article facts');
           return null;
         }
 
-        // 5. Moderate content
+        // 6. Moderate content
         const moderation = await this.moderateContent(content);
         if (!moderation.isAppropriate) {
           console.error('Content flagged during moderation:', moderation.reason);
           return null;
         }
 
-        // 6. Generate tags and categories
+        // 7. Generate tags and categories
         const categorization = await this.openai.chat.completions.create({
           model: "gpt-4o",
           messages: [
             {
               role: "system",
-              content: `You are a Wikipedia categorization expert. Analyze the article and generate appropriate categories following Wikipedia's best practices:
+              content: `You are a encyclopedia categorization expert. Analyze the article and generate appropriate categories following encyclopedia best practices:
 
 1. Use hierarchical categorization (from broad to specific)
 2. Include both topical and administrative categories
-3. Follow Wikipedia's naming conventions:
+3. Follow Encyclopedia naming conventions:
    - Use plural forms for most categories
    - Capitalize first letter of each word
    - Use natural language order
@@ -347,7 +481,7 @@ Do not include any other text or formatting.`
         messages: [
           {
             role: "system",
-            content: "Generate a list of related topics that would make good wiki articles. Consider different aspects, subtopics, and connected subjects. Return as a JSON array of strings."
+            content: "Generate a list of related topics that would make good encyclopedia articles. Consider different aspects, subtopics, and connected subjects. Return as a JSON array of strings."
           },
           {
             role: "user",
@@ -372,7 +506,7 @@ Do not include any other text or formatting.`
         messages: [
           {
             role: "system",
-            content: `You are a Wikipedia categorization expert. Analyze the article and generate appropriate categories following Wikipedia's strict guidelines:
+            content: `You are a encyclopedia categorization expert. Analyze the article and generate appropriate categories following encyclopedia guidelines:
 
 1. Generate between 2-10 categories total (aim for 3-7 as ideal)
 2. Use hierarchical categorization, including:
@@ -435,56 +569,90 @@ Return ONLY a JSON object in this format:
     }
   }
 
-  async generateArticles(topic: string, count: number): Promise<Array<Partial<Article>>> {
+  async generateArticles(topic: string, count: number, existingArticles: Article[] = []): Promise<Array<Partial<Article>>> {
     const results: Array<Partial<Article>> = [];
+    const failedAttempts: Record<string, string> = {};
     
     try {
       console.log(`Starting generation of ${count} articles for topic: ${topic}`);
       
       // First, expand the topic into specific subtopics
       // Request more subtopics than needed to have a pool to choose from
-      const subtopics = await this.expandTopicIntoSubtopics(topic, Math.max(count * 2, 5));
+      const subtopics = await this.expandTopicIntoSubtopics(topic, Math.max(count * 3, 10));
       console.log('Generated subtopics:', subtopics);
       
       // If we couldn't expand the topic, try generating articles with the original topic
       if (subtopics.length === 0) {
         console.log('No subtopics generated, using original topic');
-        const article = await this.generateArticle(topic);
+        const article = await this.generateArticle(topic, existingArticles);
         if (article) {
           results.push(article);
         }
         return results;
       }
       
-      // Keep track of used subtopics to avoid duplicates
+      // Keep track of used subtopics and failed attempts
       const usedSubtopics = new Set<string>();
+      let attempts = 0;
+      const maxAttempts = count * 3; // Allow up to 3 attempts per desired article
       
-      // Generate articles for each count requested
-      for (let i = 0; i < count; i++) {
-        // Filter out used subtopics and get a random one
+      // Generate articles until we reach count or max attempts
+      while (results.length < count && attempts < maxAttempts) {
+        attempts++;
+        
+        // Filter out used subtopics and get available ones
         const availableSubtopics = subtopics.filter(st => !usedSubtopics.has(st));
         if (availableSubtopics.length === 0) {
           console.log('No more unique subtopics available');
           break;
         }
         
-        const randomIndex = Math.floor(Math.random() * availableSubtopics.length);
-        const specificTopic = availableSubtopics[randomIndex];
-        usedSubtopics.add(specificTopic);
+        // Select a subtopic using a weighted random approach
+        // Prefer subtopics that haven't failed before
+        const weightedSubtopics = availableSubtopics.map(st => ({
+          topic: st,
+          weight: failedAttempts[st] ? 0.3 : 1.0
+        }));
         
-        console.log(`Generating article for specific topic: ${specificTopic}`);
+        const totalWeight = weightedSubtopics.reduce((sum, st) => sum + st.weight, 0);
+        let random = Math.random() * totalWeight;
+        let selectedTopic = weightedSubtopics[0].topic;
+        
+        for (const st of weightedSubtopics) {
+          random -= st.weight;
+          if (random <= 0) {
+            selectedTopic = st.topic;
+            break;
+          }
+        }
+        
+        usedSubtopics.add(selectedTopic);
+        
+        console.log(`Generating article for specific topic: ${selectedTopic} (Attempt ${attempts})`);
         try {
-          const article = await this.generateArticle(specificTopic);
+          // Include both existing articles and newly generated ones in duplicate check
+          const allArticles = [...existingArticles, ...results.filter((a): a is Article => 
+            !!a.id && !!a.title && !!a.content // Type guard to ensure required fields exist
+          )];
+          const article = await this.generateArticle(selectedTopic, allArticles);
+          
           if (article) {
-            console.log(`Successfully generated article for: ${specificTopic}`);
+            console.log(`Successfully generated article for: ${selectedTopic}`);
             results.push(article);
           } else {
-            console.error(`Failed to generate article for: ${specificTopic}`);
+            console.error(`Failed to generate article for: ${selectedTopic}`);
+            failedAttempts[selectedTopic] = `Failed on attempt ${attempts}`;
           }
-        } catch (error) {
-          console.error(`Error generating article for ${specificTopic}:`, error);
+        } catch (error: unknown) {
+          console.error(`Error generating article for ${selectedTopic}:`, error);
+          failedAttempts[selectedTopic] = error instanceof Error ? error.message : 'Unknown error';
           continue;
         }
+      }
+      
+      if (results.length < count) {
+        console.log(`Warning: Only generated ${results.length}/${count} articles after ${attempts} attempts`);
+        console.log('Failed attempts:', failedAttempts);
       }
       
       console.log(`Generation complete. Generated ${results.length} articles`);
