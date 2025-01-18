@@ -202,3 +202,68 @@
            border border-blue-200 dark:border-blue-900/50;
   }
 }
+
+/* Print styles */
+@media print {
+  /* Hide non-essential elements */
+  header button,
+  .sidebar,
+  nav,
+  .search-input,
+  .btn-primary,
+  .btn-secondary {
+    display: none !important;
+  }
+
+  /* Ensure content is visible */
+  main {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+  }
+
+  /* Improve text readability */
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000;
+    background: #fff;
+  }
+
+  /* Ensure links are useful in printed version */
+  a {
+    text-decoration: underline;
+    color: #000;
+  }
+
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 90%;
+  }
+
+  /* Improve table readability */
+  table {
+    border-collapse: collapse;
+  }
+
+  table, th, td {
+    border: 1px solid #000;
+  }
+
+  /* Ensure images are properly sized */
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
+
+  /* Add page breaks where needed */
+  h1, h2, h3 {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure proper margins */
+  @page {
+    margin: 2cm;
+  }
+}

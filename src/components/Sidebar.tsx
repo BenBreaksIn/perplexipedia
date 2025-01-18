@@ -1,9 +1,23 @@
 import React, { useState } from 'react';
 import { useAppearance } from '../contexts/AppearanceContext';
+import { useLocation } from 'react-router-dom';
 
 export const Sidebar: React.FC = () => {
   const { isMenuOpen, fontSize, setFontSize, colorMode, setColorMode } = useAppearance();
   const [showAppearance, setShowAppearance] = useState(true);
+  const [showCopySuccess, setShowCopySuccess] = useState(false);
+  const location = useLocation();
+
+  const handleCopyLink = async () => {
+    try {
+      const url = window.location.origin + location.pathname;
+      await navigator.clipboard.writeText(url);
+      setShowCopySuccess(true);
+      setTimeout(() => setShowCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
 
   return (
     <aside className={`${isMenuOpen ? 'md:block' : 'md:hidden'} hidden w-64 pr-8 transition-all duration-300 ease-in-out`}>
@@ -12,10 +26,22 @@ export const Sidebar: React.FC = () => {
         <div>
           <h3 className="section-title">Tools</h3>
           <div className="space-y-1">
+            <button onClick={() => window.print()} className="nav-link block w-full text-left">
+              Printable version
+            </button>
+            <a href="#" onClick={(e) => {
+              e.preventDefault();
+              window.print();
+            }} className="nav-link block">Print/Download PDF</a>
             <a href="#" className="nav-link block">What links here</a>
             <a href="#" className="nav-link block">Related changes</a>
             <a href="#" className="nav-link block">Special pages</a>
-            <a href="#" className="nav-link block">Permanent link</a>
+            <button 
+              onClick={handleCopyLink} 
+              className={`nav-link block w-full text-left ${showCopySuccess ? 'text-green-600 dark:text-green-400' : ''}`}
+            >
+              {showCopySuccess ? 'Copied!' : 'Permanent link'}
+            </button>
             <a href="#" className="nav-link block">Page information</a>
           </div>
         </div>
