@@ -2,13 +2,23 @@ import OpenAI from 'openai';
 import { Article } from '../types/article';
 import { getAuth } from 'firebase/auth';
 
-interface AIServiceConfig {
+export type AIProvider = 'openai' | 'perplexity';
+
+export interface AIServiceConfig {
+  provider: AIProvider;
   apiKey: string;
   preferredSources?: string[];
   topicsOfInterest?: string[];
 }
 
-export class AIService {
+export interface IAIService {
+  generateArticle(topic: string, existingArticles?: Article[], minWordCount?: number, maxWordCount?: number): Promise<Partial<Article> | null>;
+  suggestEdits(content: string): Promise<{ suggestions: string[]; improvedContent?: string }>;
+  generateCategories(content: string): Promise<Array<{ id: string; name: string }>>;
+  generateArticles(topic: string, count: number, existingArticles?: Article[], minWordCount?: number, maxWordCount?: number): Promise<Array<Partial<Article>>>;
+}
+
+export class OpenAIService implements IAIService {
   private openai: OpenAI;
 
   constructor(config: AIServiceConfig) {
@@ -330,52 +340,57 @@ export class AIService {
             content: `You are an expert encyclopedia article writer with fact-checking capabilities.
             Create a comprehensive, well-structured article about the given topic.
             
-            CRITICAL REQUIREMENTS:
-            - The article MUST be between ${minWordCount} and ${maxWordCount} words
-            - Do NOT submit if word count is outside the specified range
-            
-            Follow these guidelines:
-            1. Be objective and unbiased
-            2. Use clear, academic language
-            3. Include relevant facts and figures
-            4. Structure the article with appropriate sections based on the topic's nature:
-               - Always start with a concise introduction (no heading)
-               - Choose subsequent sections based on what's most relevant to the topic
-               - Common sections might include: History, Description, Types, Applications, Impact, etc.
-               - Don't force sections that aren't relevant to the topic
-            5. Cite sources inline using [1], [2], etc.
-            6. Add a References section at the end listing all sources
-            7. Only include verifiable information
-            8. Format in markdown
-            9. Include image placeholders where appropriate using the provided images
-            10. DO NOT include the article title in the content
-            11. DO NOT repeat infobox information in the main content
-            12. Include "External links" section when relevant
-            
-            Return your response in this JSON format:
+            CRITICAL: You MUST respond with ONLY valid JSON in this exact format:
             {
-              "content": "The article content in markdown (start directly with the introduction, no title or key facts)",
-              "sources_used": ["array of sources actually used"],
-              "infobox": {
-                "title": "string",
-                "image": "index of main image to use",
-                "key_facts": {
-                  "Main Theme": "string",
-                  "Primary Periods": "string",
-                  "Key Dates": "string",
-                  "Notable Figures": "string",
-                  // Add other relevant key facts based on topic
-                }
-              },
-              "word_count": number
-            }`
+              "title": "string (the article title)",
+              "content": "string (the article content following the format below)",
+              "references": ["array of reference strings"]
+            }
+
+            Content Format Requirements:
+            1. Start with a concise introduction (no heading)
+            2. Use markdown for formatting:
+               - Use ## for main section headings
+               - Use ### for subsection headings
+               - Use regular text for content
+               - Use [1], [2], etc. for citations
+               - NO bold text or excessive formatting
+            3. Structure:
+               - Introduction (no heading)
+               - Main sections with ## heading
+               - Subsections with ### heading if needed
+               - References section at the end
+            4. Word count: ${minWordCount}-${maxWordCount} words
+            5. Style:
+               - Academic and neutral tone
+               - Clear and concise language
+               - Proper citation format [1], [2], etc.
+               - No excessive formatting or special characters
+            
+            Example Format:
+            {
+              "title": "Sample Topic",
+              "content": "Introduction paragraph here, explaining the topic clearly and concisely.
+
+## Main Section
+This is a main section with regular text formatting. Citations are added like this [1].
+
+### Subsection
+This is a subsection with more specific details [2].
+
+## References
+1. First reference
+2. Second reference",
+              "references": ["Reference 1", "Reference 2"]
+            }
+
+            DO NOT include any text outside the JSON structure.
+            DO NOT use bold text or excessive formatting.
+            ENSURE the response is valid JSON that can be parsed.`
           },
           {
             role: "user",
-            content: `Write an article about: ${topic}
-            Required word count: between ${minWordCount} and ${maxWordCount} words
-            Available sources: ${JSON.stringify(sources)}
-            Available images: ${JSON.stringify(images)}`
+            content: `Write an article about: ${topic}\nSources: ${JSON.stringify(sources)}`
           }
         ],
         temperature: 0.7,
@@ -759,5 +774,450 @@ Return ONLY a JSON object in this format:
       console.error('Error expanding topics:', error);
       return [];
     }
+  }
+}
+
+export class PerplexityAIService implements IAIService {
+  private apiKey: string;
+  private baseUrl = 'https://api.perplexity.ai';
+  private model = 'llama-3.1-sonar-large-128k-online';
+
+  constructor(config: AIServiceConfig) {
+    this.apiKey = config.apiKey;
+  }
+
+  private async makeRequest(messages: any[], temperature: number = 0.7) {
+    // Add a JSON enforcement message at the start of every conversation
+    const messagesWithJsonEnforcement = [
+      {
+        role: "system",
+        content: "You MUST respond with valid JSON only. No other text or explanation. If you need to explain something, include it in a 'note' field in the JSON response. Do not use special characters or line breaks within string values."
+      },
+      ...messages
+    ];
+
+    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        model: this.model,
+        messages: messagesWithJsonEnforcement,
+        temperature,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Perplexity API error: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    
+    try {
+      const content = result.choices[0].message.content;
+      
+      // Clean the content string
+      const cleanContent = content
+        // Remove any non-printable characters
+        .replace(/[\x00-\x1F\x7F-\x9F]/g, '')
+        // Replace multiple spaces with single space
+        .replace(/\s+/g, ' ')
+        // Remove spaces after backslashes
+        .replace(/\\\s+/g, '\\')
+        // Fix common JSON issues
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t')
+        .replace(/\\"/g, '"')
+        .replace(/"\s+}/g, '"}')
+        .replace(/}\s+"/g, '}"')
+        .replace(/"\s+:/g, '":')
+        .replace(/:\s+"/g, ':"')
+        .trim();
+
+      // Try to find and extract JSON from the content
+      const jsonMatch = cleanContent.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+      if (jsonMatch) {
+        try {
+          return JSON.parse(jsonMatch[0]);
+        } catch (parseError) {
+          console.error('Error parsing matched JSON:', parseError);
+          // Try one more time with additional cleaning
+          const strictContent = jsonMatch[0]
+            .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3') // Ensure property names are quoted
+            .replace(/,\s*([}\]])/g, '$1'); // Remove trailing commas
+          return JSON.parse(strictContent);
+        }
+      }
+
+      // If no JSON found, try to parse the entire cleaned content
+      return JSON.parse(cleanContent);
+    } catch (error) {
+      console.error('Failed to parse response as JSON:', result.choices[0].message.content);
+      console.error('Parse error:', error);
+      // Return a basic error structure that won't break the application
+      return {
+        error: 'Invalid response format',
+        content: result.choices[0].message.content,
+        title: 'Error generating content',
+        isAppropriate: false,
+        verified: false,
+        isDuplicate: false
+      };
+    }
+  }
+
+  private async searchSources(topic: string): Promise<string[]> {
+    try {
+      const response = await this.makeRequest(
+        [
+          {
+            role: "system",
+            content: `You are a research assistant. Search for reliable, non-biased sources.
+            Return ONLY a JSON object in this exact format:
+            {
+              "sources": [{
+                "url": "source url",
+                "title": "source title",
+                "publisher": "publishing organization",
+                "type": "type of source (academic/government/research/etc)",
+                "year": "publication year"
+              }]
+            }
+            NO other text or explanation allowed.`
+          },
+          {
+            role: "user",
+            content: `Find reliable sources for an article about: ${topic}`
+          }
+        ],
+        0.3
+      );
+
+      return Array.isArray(response.sources) ? response.sources : [];
+    } catch (error) {
+      console.error('Error searching sources:', error);
+      return [];
+    }
+  }
+
+  private async verifyFacts(content: string, sources: any[]): Promise<boolean> {
+    try {
+      const response = await this.makeRequest(
+        [
+          {
+            role: "system",
+            content: `You are a fact-checking assistant. Return ONLY a JSON object in this exact format:
+            {
+              "verified": boolean,
+              "score": number (0-100),
+              "analysis": {
+                "core_facts_score": number,
+                "supporting_details_score": number,
+                "unverified_claims": string[]
+              }
+            }
+            NO other text or explanation allowed.`
+          },
+          {
+            role: "user",
+            content: `Content: ${content}\nSources: ${JSON.stringify(sources)}`
+          }
+        ],
+        0.3
+      );
+
+      return response.verified === true;
+    } catch (error) {
+      console.error('Error verifying facts:', error);
+      return false;
+    }
+  }
+
+  private async moderateContent(content: string): Promise<{
+    isAppropriate: boolean;
+    reason?: string;
+  }> {
+    try {
+      const response = await this.makeRequest(
+        [
+          {
+            role: "system",
+            content: `You are a content moderation assistant. Return ONLY a JSON object in this exact format:
+            {
+              "isAppropriate": boolean,
+              "reason": string (if not appropriate)
+            }
+            NO other text or explanation allowed.`
+          },
+          {
+            role: "user",
+            content
+          }
+        ],
+        0.3
+      );
+
+      return {
+        isAppropriate: response.isAppropriate,
+        reason: response.reason
+      };
+    } catch (error) {
+      console.error('Error moderating content:', error);
+      return { isAppropriate: false, reason: 'Error during moderation check' };
+    }
+  }
+
+  async generateArticle(
+    topic: string,
+    existingArticles: Article[] = [],
+    minWordCount: number = 500,
+    maxWordCount: number = 2000
+  ): Promise<Partial<Article> | null> {
+    try {
+      // Check for duplicates first
+      const dupeCheck = await this.makeRequest(
+        [
+          {
+            role: "system",
+            content: `You are a duplicate content detection expert. Return ONLY a JSON object in this exact format:
+            {
+              "isDuplicate": boolean,
+              "reason": string (if duplicate)
+            }
+            NO other text or explanation allowed.`
+          },
+          {
+            role: "user",
+            content: `Proposed topic: ${topic}
+            Existing articles: ${JSON.stringify(existingArticles.map(a => ({
+              title: a.title,
+              content: a.content
+            })))}`
+          }
+        ],
+        0.3
+      );
+
+      if (dupeCheck.isDuplicate) {
+        console.error('Duplicate detected:', dupeCheck.reason);
+        return null;
+      }
+
+      const sources = await this.searchSources(topic);
+      
+      const response = await this.makeRequest(
+        [
+          {
+            role: "system",
+            content: `You are an expert encyclopedia article writer with fact-checking capabilities.
+            Create a comprehensive, well-structured article about the given topic.
+            
+            CRITICAL: You MUST respond with ONLY valid JSON in this exact format:
+            {
+              "title": "string (the article title)",
+              "content": "string (the article content following the format below)",
+              "references": ["array of reference strings"]
+            }
+
+            Content Format Requirements:
+            1. Start with a concise introduction (no heading)
+            2. Use markdown for formatting:
+               - Use ## for main section headings
+               - Use ### for subsection headings
+               - Use regular text for content
+               - Use [1], [2], etc. for citations
+               - NO bold text or excessive formatting
+            3. Structure:
+               - Introduction (no heading)
+               - Main sections with ## heading
+               - Subsections with ### heading if needed
+               - References section at the end
+            4. Word count: ${minWordCount}-${maxWordCount} words
+            5. Style:
+               - Academic and neutral tone
+               - Clear and concise language
+               - Proper citation format [1], [2], etc.
+               - No excessive formatting or special characters
+            
+            Example Format:
+            {
+              "title": "Sample Topic",
+              "content": "Introduction paragraph here, explaining the topic clearly and concisely.
+
+## Main Section
+This is a main section with regular text formatting. Citations are added like this [1].
+
+### Subsection
+This is a subsection with more specific details [2].
+
+## References
+1. First reference
+2. Second reference",
+              "references": ["Reference 1", "Reference 2"]
+            }
+
+            DO NOT include any text outside the JSON structure.
+            DO NOT use bold text or excessive formatting.
+            ENSURE the response is valid JSON that can be parsed.`
+          },
+          {
+            role: "user",
+            content: `Write an article about: ${topic}\nSources: ${JSON.stringify(sources)}`
+          }
+        ],
+        0.7
+      );
+
+      if (!response.content || !response.title) {
+        console.error('Invalid article response:', response);
+        return null;
+      }
+
+      // Verify facts
+      const isVerified = await this.verifyFacts(response.content, sources);
+      if (!isVerified) {
+        throw new Error('Generated content failed fact verification');
+      }
+
+      // Moderate content
+      const moderation = await this.moderateContent(response.content);
+      if (!moderation.isAppropriate) {
+        throw new Error(`Content moderation failed: ${moderation.reason}`);
+      }
+
+      // Get the current user's ID from auth
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('User must be logged in to generate articles');
+      }
+
+      return {
+        title: response.title,
+        content: response.content,
+        status: 'draft',
+        author: currentUser.displayName || currentUser.email || 'Anonymous',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        currentVersion: crypto.randomUUID(),
+        versions: [{
+          id: crypto.randomUUID(),
+          content: response.content,
+          author: currentUser.displayName || currentUser.email || 'Anonymous',
+          timestamp: new Date(),
+          changes: 'Initial version generated by AI'
+        }],
+        isAIGenerated: true,
+        categoriesLockedByAI: true
+      };
+    } catch (error) {
+      console.error('Error generating article:', error);
+      return null;
+    }
+  }
+
+  async suggestEdits(content: string): Promise<{
+    suggestions: string[];
+    improvedContent?: string;
+  }> {
+    try {
+      const response = await this.makeRequest(
+        [
+          {
+            role: "system",
+            content: `You are an expert editor. Review the content and suggest improvements.
+            Focus on:
+            1. Grammar and spelling
+            2. Clarity and readability
+            3. Structure and flow
+            4. Technical accuracy
+            
+            Return ONLY a JSON object in this exact format:
+            {
+              "suggestions": ["list of specific suggestions"],
+              "improvedContent": "improved version of the content"
+            }
+            NO other text or explanation allowed.`
+          },
+          {
+            role: "user",
+            content
+          }
+        ],
+        0.3
+      );
+
+      return {
+        suggestions: Array.isArray(response.suggestions) ? response.suggestions : [],
+        improvedContent: response.improvedContent
+      };
+    } catch (error) {
+      console.error('Error suggesting edits:', error);
+      return { suggestions: [] };
+    }
+  }
+
+  async generateCategories(content: string): Promise<Array<{ id: string; name: string }>> {
+    try {
+      const response = await this.makeRequest(
+        [
+          {
+            role: "system",
+            content: `You are a content categorization expert. Analyze the content and suggest relevant categories.
+            Categories should be:
+            1. Specific but not too narrow
+            2. Hierarchical where appropriate
+            3. Consistent with academic/professional standards
+            
+            Return ONLY a JSON array in this exact format:
+            [
+              {
+                "id": "unique-category-id",
+                "name": "Category Name"
+              }
+            ]
+            NO other text or explanation allowed.`
+          },
+          {
+            role: "user",
+            content
+          }
+        ],
+        0.3
+      );
+
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error('Error generating categories:', error);
+      return [];
+    }
+  }
+
+  async generateArticles(
+    topic: string,
+    count: number,
+    existingArticles: Article[] = [],
+    minWordCount: number = 500,
+    maxWordCount: number = 2000
+  ): Promise<Array<Partial<Article>>> {
+    const articles: Array<Partial<Article>> = [];
+    
+    for (let i = 0; i < count; i++) {
+      try {
+        const article = await this.generateArticle(topic, existingArticles, minWordCount, maxWordCount);
+        if (article) {
+          articles.push(article);
+        }
+      } catch (error) {
+        console.error(`Error generating article ${i + 1}/${count}:`, error);
+        continue;
+      }
+    }
+    
+    return articles;
   }
 } 

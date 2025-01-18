@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { AIService } from '../services/ai';
+import { OpenAIService, PerplexityAIService, IAIService, AIProvider } from '../services/ai';
 import { Article } from '../types/article';
 import { decryptApiKey } from '../utils/encryption';
 
@@ -19,13 +19,15 @@ export interface UseAIResult {
   generateCategories: (content: string) => Promise<Array<{ id: string; name: string }>>;
   isLoading: boolean;
   error: string | null;
+  provider: AIProvider;
 }
 
 export const useAI = (): UseAIResult => {
   const { currentUser } = useAuth();
-  const [aiService, setAIService] = useState<AIService | null>(null);
+  const [aiService, setAIService] = useState<IAIService | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [provider, setProvider] = useState<AIProvider>('openai');
 
   useEffect(() => {
     const loadAISettings = async () => {
@@ -40,20 +42,27 @@ export const useAI = (): UseAIResult => {
         
         if (docSnap.exists()) {
           const settings = docSnap.data();
-          if (settings.openaiKey) {
-            const decryptedKey = decryptApiKey(settings.openaiKey);
-            if (!decryptedKey) {
-              setError('Failed to decrypt API key');
-              return;
-            }
-            
-            setAIService(new AIService({
-              apiKey: decryptedKey
-            }));
-            setError(null);
+          const selectedProvider = settings.provider || 'openai';
+          setProvider(selectedProvider);
+
+          let apiKey: string | undefined;
+          if (selectedProvider === 'openai') {
+            apiKey = settings.openaiKey ? decryptApiKey(settings.openaiKey) : undefined;
           } else {
-            setError('OpenAI API key not found in settings');
+            apiKey = settings.perplexityKey ? decryptApiKey(settings.perplexityKey) : undefined;
           }
+
+          if (!apiKey) {
+            setError(`${selectedProvider === 'openai' ? 'OpenAI' : 'Perplexity'} API key not found in settings`);
+            return;
+          }
+
+          const ServiceClass = selectedProvider === 'openai' ? OpenAIService : PerplexityAIService;
+          setAIService(new ServiceClass({
+            provider: selectedProvider,
+            apiKey
+          }));
+          setError(null);
         } else {
           setError('AI settings not found');
         }
@@ -154,6 +163,7 @@ export const useAI = (): UseAIResult => {
     suggestEdits,
     generateCategories,
     isLoading,
-    error
+    error,
+    provider
   };
 }; 
