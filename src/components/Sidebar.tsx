@@ -8,16 +8,6 @@ export const Sidebar: React.FC = () => {
   return (
     <aside className={`${isMenuOpen ? 'md:block' : 'md:hidden'} hidden w-64 pr-8 transition-all duration-300 ease-in-out`}>
       <nav className="space-y-6">
-        <div>
-          <h3 className="section-title">Navigation</h3>
-          <div className="space-y-1">
-            <a href="#" className="nav-link block">Main Page</a>
-            <a href="#" className="nav-link block">Contents</a>
-            <a href="#" className="nav-link block">Featured Content</a>
-            <a href="#" className="nav-link block">Random Article</a>
-          </div>
-        </div>
-
         {/* Tools Section */}
         <div>
           <h3 className="section-title">Tools</h3>

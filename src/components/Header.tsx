@@ -2,6 +2,8 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppearance } from '../contexts/AppearanceContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 export const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -15,6 +17,32 @@ export const Header: React.FC = () => {
       navigate('/');
     } catch (error) {
       console.error('Failed to log out:', error);
+    }
+  };
+
+  const getRandomArticle = async () => {
+    try {
+      // Query all published articles
+      const articlesRef = collection(db, 'articles');
+      const q = query(articlesRef, where('status', '==', 'published'));
+      const querySnapshot = await getDocs(q);
+      
+      // Convert to array and get random article
+      const articles = querySnapshot.docs.map(doc => ({ id: doc.id }));
+      if (articles.length === 0) return null;
+      
+      const randomIndex = Math.floor(Math.random() * articles.length);
+      return articles[randomIndex].id;
+    } catch (error) {
+      console.error('Error getting random article:', error);
+      return null;
+    }
+  };
+
+  const handleRandomClick = async () => {
+    const randomId = await getRandomArticle();
+    if (randomId) {
+      navigate(`/articles/${randomId}`);
     }
   };
 
@@ -146,6 +174,20 @@ export const Header: React.FC = () => {
           >
             View history
           </button>
+          <div className="ml-auto flex">
+            <button 
+              onClick={handleRandomClick}
+              className="page-tab"
+            >
+              Featured
+            </button>
+            <button 
+              onClick={handleRandomClick}
+              className="page-tab"
+            >
+              Random
+            </button>
+          </div>
         </div>
       </div>
     </header>
