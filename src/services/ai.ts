@@ -181,12 +181,14 @@ export class AIService {
             3. Pexels
             4. Creative Commons sources
             
-            Return ONLY a JSON array of image objects in this format:
-            [{
-              "url": "direct image url",
-              "attribution": "credit and license info",
-              "description": "brief description for alt text"
-            }]
+            Return ONLY a JSON object in this format:
+            {
+              "images": [{
+                "url": "direct image url",
+                "attribution": "credit and license info",
+                "description": "brief description for alt text"
+              }]
+            }
             
             Ensure all images are:
             - Free to use
@@ -205,9 +207,14 @@ export class AIService {
         response_format: { type: "json_object" }
       });
 
-      const content = response.choices[0].message.content || '{"images": []}';
-      const parsed = JSON.parse(content);
-      return Array.isArray(parsed.images) ? parsed.images : [];
+      try {
+        const content = response.choices[0].message.content || '{"images": []}';
+        const parsed = JSON.parse(content);
+        return Array.isArray(parsed.images) ? parsed.images : [];
+      } catch (parseError) {
+        console.error('Error parsing images JSON:', parseError);
+        return [];
+      }
     } catch (error) {
       console.error('Error searching images:', error);
       return [];
@@ -322,6 +329,7 @@ export class AIService {
             9. Include image placeholders where appropriate using the provided images
             10. Add infobox at the start for key facts
             11. Include "See also" and "External links" sections
+            12. DO NOT include the article title in the content - it will be displayed separately
             
             Return your response in this JSON format:
             {

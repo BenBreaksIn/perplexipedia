@@ -86,7 +86,20 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     if (!title) return;
     const result = await generateArticle(title);
     if (result) {
-      setContent(result.content || '');
+      // Remove the title and any empty lines at the start of the content
+      const contentLines = result.content?.split('\n') || [];
+      let startIndex = 0;
+      
+      // Skip the title line (# Title) and any empty lines after it
+      while (startIndex < contentLines.length && 
+        (contentLines[startIndex].trim().startsWith('# ') || 
+         contentLines[startIndex].trim() === '')) {
+        startIndex++;
+      }
+      
+      const cleanContent = contentLines.slice(startIndex).join('\n').trim();
+      
+      setContent(cleanContent);
       setSelectedCategories(result.categories || []);
       setSelectedTags(result.tags || []);
       setImages(result.images || []);
