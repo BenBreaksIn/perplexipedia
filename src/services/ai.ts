@@ -290,7 +290,12 @@ export class AIService {
     }
   }
 
-  async generateArticle(topic: string, existingArticles: Article[] = []): Promise<Partial<Article> | null> {
+  async generateArticle(
+    topic: string, 
+    existingArticles: Article[] = [], 
+    minWordCount: number = 500,
+    maxWordCount: number = 2000
+  ): Promise<Partial<Article> | null> {
     try {
       // Get the current user's ID from auth
       const auth = getAuth();
@@ -339,24 +344,35 @@ export class AIService {
             7. Only include verifiable information
             8. Format in markdown
             9. Include image placeholders where appropriate using the provided images
-            10. Add infobox at the start for key facts
-            11. Include "External links" section when relevant
-            12. DO NOT include the article title in the content - it will be displayed separately
+            10. DO NOT include the article title in the content
+            11. DO NOT repeat infobox information in the main content
+            12. Include "External links" section when relevant
+            13. STRICTLY follow the requested word count range provided in the user's prompt
             
             Return your response in this JSON format:
             {
-              "content": "The article content in markdown",
+              "content": "The article content in markdown (start directly with the introduction, no title or key facts)",
               "sources_used": ["array of sources actually used"],
               "infobox": {
                 "title": "string",
                 "image": "index of main image to use",
-                "key_facts": {"label": "value"}
-              }
+                "key_facts": {
+                  "Main Theme": "string",
+                  "Primary Periods": "string",
+                  "Key Dates": "string",
+                  "Notable Figures": "string",
+                  // Add other relevant key facts based on topic
+                }
+              },
+              "word_count": number
             }`
           },
           {
             role: "user",
-            content: `Write an article about: ${topic}\nAvailable sources: ${JSON.stringify(sources)}\nAvailable images: ${JSON.stringify(images)}`
+            content: `Write an article about: ${topic}
+            Required word count: between ${minWordCount} and ${maxWordCount} words
+            Available sources: ${JSON.stringify(sources)}
+            Available images: ${JSON.stringify(images)}`
           }
         ],
         temperature: 0.7,
@@ -593,7 +609,13 @@ Return ONLY a JSON object in this format:
     }
   }
 
-  async generateArticles(topic: string, count: number, existingArticles: Article[] = []): Promise<Array<Partial<Article>>> {
+  async generateArticles(
+    topic: string, 
+    count: number, 
+    existingArticles: Article[] = [],
+    minWordCount: number = 500,
+    maxWordCount: number = 2000
+  ): Promise<Array<Partial<Article>>> {
     const results: Array<Partial<Article>> = [];
     const failedAttempts: Record<string, string> = {};
     
@@ -608,7 +630,7 @@ Return ONLY a JSON object in this format:
       // If we couldn't expand the topic, try generating articles with the original topic
       if (subtopics.length === 0) {
         console.log('No subtopics generated, using original topic');
-        const article = await this.generateArticle(topic, existingArticles);
+        const article = await this.generateArticle(topic, existingArticles, minWordCount, maxWordCount);
         if (article) {
           results.push(article);
         }
@@ -658,7 +680,7 @@ Return ONLY a JSON object in this format:
           const allArticles = [...existingArticles, ...results.filter((a): a is Article => 
             !!a.id && !!a.title && !!a.content // Type guard to ensure required fields exist
           )];
-          const article = await this.generateArticle(selectedTopic, allArticles);
+          const article = await this.generateArticle(selectedTopic, allArticles, minWordCount, maxWordCount);
           
           if (article) {
             console.log(`Successfully generated article for: ${selectedTopic}`);

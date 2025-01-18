@@ -99,7 +99,13 @@ export const DashboardContributions = () => {
       setProgress(0);
 
       const prompt = `Generate ${config.numberOfArticles} articles about ${config.selectedTopics.join(', ')} with length between ${config.minWordCount} and ${config.maxWordCount} words each`;
-      const articles = await generateArticles(prompt, config.numberOfArticles);
+      const articles = await generateArticles(
+        prompt, 
+        config.numberOfArticles, 
+        [], // existing articles
+        config.minWordCount,
+        config.maxWordCount
+      );
       const total = articles.length;
       
       for (let i = 0; i < articles.length; i++) {
