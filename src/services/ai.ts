@@ -329,14 +329,18 @@ export class AIService {
             1. Be objective and unbiased
             2. Use clear, academic language
             3. Include relevant facts and figures
-            4. Structure with appropriate sections (Introduction, History, Features, etc.)
+            4. Structure the article with appropriate sections based on the topic's nature:
+               - Always start with a concise introduction (no heading)
+               - Choose subsequent sections based on what's most relevant to the topic
+               - Common sections might include: History, Description, Types, Applications, Impact, etc.
+               - Don't force sections that aren't relevant to the topic
             5. Cite sources inline using [1], [2], etc.
             6. Add a References section at the end listing all sources
             7. Only include verifiable information
             8. Format in markdown
             9. Include image placeholders where appropriate using the provided images
             10. Add infobox at the start for key facts
-            11. Include "See also" and "External links" sections
+            11. Include "External links" section when relevant
             12. DO NOT include the article title in the content - it will be displayed separately
             
             Return your response in this JSON format:
