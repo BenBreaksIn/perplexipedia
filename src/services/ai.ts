@@ -831,6 +831,17 @@ export class PerplexityAIService implements IAIService {
     maxWordCount: number = 2000
   ): Promise<Partial<Article> | null> {
     try {
+      // Check for duplicate titles
+      const normalizedTopic = topic.trim().toLowerCase();
+      const isDuplicate = existingArticles.some(article => 
+        article.title.trim().toLowerCase() === normalizedTopic
+      );
+
+      if (isDuplicate) {
+        console.error('Duplicate article title detected:', topic);
+        return null;
+      }
+
       const response = await this.makeRequest(
         [
           {
