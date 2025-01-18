@@ -60,6 +60,7 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
                 const updatedArticle: Article = {
                     ...article,
                     ...articleData,
+                    author: currentUser.displayName || currentUser.email || 'unknown',
                     versions: [...article.versions, newVersion],
                     currentVersion: newVersion.id,
                     updatedAt: new Date()

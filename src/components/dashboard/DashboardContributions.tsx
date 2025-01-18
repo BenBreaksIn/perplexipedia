@@ -24,7 +24,7 @@ interface FirestoreTimestamp {
 
 export const DashboardContributions = () => {
   const navigate = useNavigate();
-  const { generateArticles, isLoading } = useAI();
+  const { generateArticles } = useAI();
   const { currentUser } = useAuth();
   const [showAutoPilot, setShowAutoPilot] = useState(false);
   const [step, setStep] = useState(1);
@@ -86,98 +86,56 @@ export const DashboardContributions = () => {
     }
   };
 
-  const handleStartGeneration = async () => {
-    if (isLoading || !config.selectedTopics.length || !currentUser) {
-      setError('Please select at least one topic');
-      return;
-    }
-    
-    setError(null);
-    setIsGenerating(true);
-    setProgress(0);
-    const totalArticles = config.numberOfArticles;
-    let generatedCount = 0;
-    const maxRetries = 3; // Maximum number of retries per topic
+  const handleGenerateArticles = async () => {
+    if (!currentUser) return;
 
     try {
-      // Generate one article at a time, cycling through topics if needed
-      while (generatedCount < totalArticles) {
-        // Get the current topic (cycle through topics if needed)
-        const topicIndex = generatedCount % config.selectedTopics.length;
-        const currentTopic = config.selectedTopics[topicIndex];
-        let retryCount = 0;
-        let success = false;
-        
-        while (retryCount < maxRetries && !success) {
-          console.log(`Generating article ${generatedCount + 1} of ${totalArticles} for topic: ${currentTopic} (Attempt ${retryCount + 1})`);
-          
-          // Generate just one article for this topic
-          const articles = await generateArticles(currentTopic, 1);
-          
-          if (articles && articles.length > 0) {
-            const result = articles[0];
-            const now = new Date();
-            const articleId = crypto.randomUUID();
-            await setDoc(doc(db, 'articles', articleId), {
-              ...result,
-              id: articleId,
-              authorId: currentUser.uid,
-              createdAt: now.toISOString(),
-              updatedAt: now.toISOString(),
-              status: 'draft'
-            });
-            generatedCount++;
-            setProgress((generatedCount / totalArticles) * 100);
-            success = true;
-            setError(null);
-          } else {
-            retryCount++;
-            if (retryCount < maxRetries) {
-              setError(`Retrying article generation for "${currentTopic}" (Attempt ${retryCount + 1} of ${maxRetries})`);
-              // Wait a short moment before retrying
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            } else {
-              setError(`Failed to generate article for "${currentTopic}" after ${maxRetries} attempts. Moving to next topic...`);
-              // Wait a moment before moving to next topic
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              break;
-            }
-          }
+      setIsGenerating(true);
+      setProgress(0);
+
+      const articles = await generateArticles(config.selectedTopics.join(', '), config.numberOfArticles);
+      const total = articles.length;
+      
+      for (let i = 0; i < articles.length; i++) {
+        const article = articles[i];
+        if (article) {
+          // Ensure the author and authorId are set to the current user
+          const articleWithAuthor = {
+            ...article,
+            author: currentUser.displayName || currentUser.email || 'unknown',
+            authorId: currentUser.uid,
+            versions: article.versions?.map(version => ({
+              ...version,
+              author: currentUser.displayName || currentUser.email || 'unknown'
+            })) || []
+          };
+
+          const articleId = crypto.randomUUID();
+          await setDoc(doc(db, 'articles', articleId), {
+            ...articleWithAuthor,
+            id: articleId,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
         }
+        setProgress(((i + 1) / total) * 100);
       }
 
-      if (generatedCount === 0) {
-        setError('No articles were generated. Please try again with different topics.');
-        return;
-      }
-
-      if (generatedCount < totalArticles) {
-        setError(`Generated ${generatedCount} out of ${totalArticles} requested articles. Some topics failed.`);
-      }
-
-      // Reload articles to show new ones
-      await loadArticles();
-
-      // Only close the modal if we generated at least one article
-      if (generatedCount > 0) {
-        // Reset auto-pilot
-        setShowAutoPilot(false);
-        setStep(1);
-        setConfig({
-          numberOfArticles: 1,
-          minWordCount: 500,
-          maxWordCount: 2000,
-          selectedTopics: []
-        });
-      }
+      setShowAutoPilot(false);
+      setStep(1);
+      setConfig({
+        numberOfArticles: 1,
+        minWordCount: 500,
+        maxWordCount: 2000,
+        selectedTopics: []
+      });
+      loadArticles();
     } catch (error) {
       console.error('Error generating articles:', error);
       setError('Failed to generate articles. Please try again.');
     } finally {
       setIsGenerating(false);
-      if (!error) {
-        setProgress(0);
-      }
+      setProgress(0);
     }
   };
 
@@ -347,7 +305,7 @@ export const DashboardContributions = () => {
           Back
         </button>
         <button
-          onClick={handleStartGeneration}
+          onClick={handleGenerateArticles}
           disabled={isGenerating || config.selectedTopics.length === 0}
           className="btn-primary"
         >

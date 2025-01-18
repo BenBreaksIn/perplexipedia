@@ -138,7 +138,7 @@ export const ArticleView: React.FC = () => {
         <article className="prose dark:prose-invert max-w-none">
           <h1 className="text-4xl font-bold mb-4">{article.title}</h1>
           <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-8 space-x-4">
-            <span>By {article.author}</span>
+            <span>By {article.author || 'Anonymous'}</span>
             <span>•</span>
             <span>Last updated: {new Date(article.updatedAt).toLocaleDateString()}</span>
           </div>

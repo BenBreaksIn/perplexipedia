@@ -324,7 +324,17 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
                           h1: ({node, ...props}) => <h1 className="text-4xl font-bold mt-8 mb-4" {...props} />,
                           h2: ({node, ...props}) => <h2 className="text-3xl font-bold mt-6 mb-3" {...props} />,
                           h3: ({node, ...props}) => <h3 className="text-2xl font-bold mt-5 mb-2" {...props} />,
-                          p: ({node, ...props}) => <p className="mb-4" {...props} />,
+                          p: ({node, children, ...props}) => {
+                            // Check if the paragraph only contains an image
+                            const childrenArray = React.Children.toArray(children);
+                            if (childrenArray.length === 1 && 
+                                React.isValidElement(childrenArray[0]) && 
+                                childrenArray[0].type === 'img') {
+                              // Return the image element directly
+                              return childrenArray[0];
+                            }
+                            return <p className="mb-4" {...props}>{children}</p>;
+                          },
                           ul: ({node, ...props}) => <ul className="list-disc list-inside mb-4 ml-4" {...props} />,
                           ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-4 ml-4" {...props} />,
                           li: ({node, ...props}) => <li className="mb-1" {...props} />,
@@ -332,19 +342,12 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
                             <blockquote className="border-l-4 border-gray-300 pl-4 my-4 italic" {...props} />
                           ),
                           img: ({node, alt, src, ...props}) => (
-                            <figure className="my-4">
-                              <img
-                                src={src}
-                                alt={alt}
-                                className="max-w-full h-auto rounded-lg"
-                                {...props}
-                              />
-                              {alt && (
-                                <figcaption className="text-center text-sm text-gray-600 mt-2 italic">
-                                  {alt}
-                                </figcaption>
-                              )}
-                            </figure>
+                            <img
+                              src={src}
+                              alt={alt}
+                              className="max-w-full h-auto rounded-lg mx-auto my-8"
+                              {...props}
+                            />
                           ),
                           a: ({node, href, ...props}) => (
                             <a
