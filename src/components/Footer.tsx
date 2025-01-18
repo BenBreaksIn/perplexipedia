@@ -1,6 +1,10 @@
 import React from 'react';
 
 export const Footer: React.FC = () => {
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <footer className="bg-white dark:bg-gray-900 border-t border-perplexipedia-border mt-8">
       <div className="container !max-w-[1672px] mx-auto px-4 py-6">
@@ -32,8 +36,22 @@ export const Footer: React.FC = () => {
           <div>
             <h3 className="section-title mb-4">Print/Export</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="nav-link">Download as PDF</a></li>
-              <li><a href="#" className="nav-link">Printable Version</a></li>
+              <li>
+                <button 
+                  onClick={handlePrint} 
+                  className="nav-link w-full text-left"
+                >
+                  Download as PDF
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={handlePrint} 
+                  className="nav-link w-full text-left"
+                >
+                  Printable Version
+                </button>
+              </li>
             </ul>
           </div>
         </div>
