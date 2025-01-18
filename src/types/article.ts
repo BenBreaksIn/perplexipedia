@@ -53,4 +53,5 @@ export interface Article {
     infobox?: InfoBox;
     isAIGenerated?: boolean;
     categoriesLockedByAI?: boolean;
+    citations?: any[]; // Citations from Perplexity API
 } 
