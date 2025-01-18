@@ -42,7 +42,17 @@ export const Sidebar: React.FC = () => {
             >
               {showCopySuccess ? 'Copied!' : 'Permanent link'}
             </button>
-            <a href="#" className="nav-link block">Page information</a>
+            <button
+              onClick={() => {
+                const articleId = location.pathname.split('/')[2];
+                if (articleId) {
+                  window.location.href = `/articles/${articleId}/info`;
+                }
+              }}
+              className="nav-link block w-full text-left"
+            >
+              Page information
+            </button>
           </div>
         </div>
 

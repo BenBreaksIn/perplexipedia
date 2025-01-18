@@ -30,7 +30,19 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2">
               <li><a href="#" className="nav-link">What Links Here</a></li>
               <li><a href="#" className="nav-link">Special Pages</a></li>
-              <li><a href="#" className="nav-link">Page Information</a></li>
+              <li>
+                <button
+                  onClick={() => {
+                    const articleId = window.location.pathname.split('/')[2];
+                    if (articleId) {
+                      window.location.href = `/articles/${articleId}/info`;
+                    }
+                  }}
+                  className="nav-link w-full text-left"
+                >
+                  Page Information
+                </button>
+              </li>
             </ul>
           </div>
           <div>
