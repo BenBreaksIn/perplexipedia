@@ -42,10 +42,15 @@ export const DashboardContributions = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [simulatedProgress, setSimulatedProgress] = useState(0);
 
   const addTopic = (topic: string) => {
     const trimmedTopic = topic.trim();
     if (trimmedTopic && !config.selectedTopics.includes(trimmedTopic)) {
+      if (config.selectedTopics.length >= 10) {
+        setError('Maximum 10 topics allowed');
+        return;
+      }
       setConfig(prev => ({
         ...prev,
         selectedTopics: [...prev.selectedTopics, trimmedTopic]
@@ -93,13 +98,13 @@ export const DashboardContributions = () => {
       setIsGenerating(true);
       setProgress(0);
 
-      const articles = await generateArticles(config.selectedTopics.join(', '), config.numberOfArticles);
+      const prompt = `Generate ${config.numberOfArticles} articles about ${config.selectedTopics.join(', ')} with length between ${config.minWordCount} and ${config.maxWordCount} words each`;
+      const articles = await generateArticles(prompt, config.numberOfArticles);
       const total = articles.length;
       
       for (let i = 0; i < articles.length; i++) {
         const article = articles[i];
         if (article) {
-          // Ensure the author and authorId are set to the current user
           const articleWithAuthor = {
             ...article,
             author: currentUser.displayName || currentUser.email || 'unknown',
@@ -129,7 +134,7 @@ export const DashboardContributions = () => {
         maxWordCount: 2000,
         selectedTopics: []
       });
-      loadArticles();
+      await loadArticles();
     } catch (error) {
       console.error('Error generating articles:', error);
       setError('Failed to generate articles. Please try again.');
@@ -176,36 +181,31 @@ export const DashboardContributions = () => {
   );
 
   const renderStep1 = () => (
-    <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium mb-2">Number of Articles</label>
-        <input
-          type="number"
-          min="1"
-          max="10"
-          value={config.numberOfArticles}
-          onChange={(e) => setConfig(prev => ({ ...prev, numberOfArticles: parseInt(e.target.value) || 1 }))}
-          className="search-input w-full"
-        />
-      </div>
-      <div className="flex justify-end">
-        <button
-          onClick={() => setStep(2)}
-          className="btn-primary"
-        >
-          Next
-        </button>
+    <div className="h-full flex flex-col justify-center items-center">
+      <div className="text-center w-full max-w-lg px-12">
+        <h4 className="text-4xl font-medium mb-16">How many articles?</h4>
+        <div className="flex justify-center mb-12">
+          <input
+            type="number"
+            min="1"
+            max="10"
+            value={config.numberOfArticles}
+            onChange={(e) => setConfig(prev => ({ ...prev, numberOfArticles: parseInt(e.target.value) || 1 }))}
+            className="text-7xl w-32 text-center bg-transparent border-b-2 border-perplexity-primary/20 focus:border-perplexity-primary focus:outline-none"
+          />
+        </div>
+        <p className="text-lg text-gray-500">You can generate up to 10 articles at once</p>
       </div>
     </div>
   );
 
   const renderStep2 = () => (
-    <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium mb-2">Word Count Range</label>
-        <div className="flex space-x-4">
-          <div className="flex-1">
-            <label className="block text-sm text-gray-500 mb-1">Minimum</label>
+    <div className="h-full flex flex-col justify-center items-center">
+      <div className="text-center w-full max-w-lg px-12">
+        <h4 className="text-4xl font-medium mb-16">Article length</h4>
+        <div className="grid grid-cols-2 gap-24 mb-12">
+          <div>
+            <p className="mb-6 text-lg text-gray-500">Minimum words</p>
             <input
               type="number"
               min="100"
@@ -213,11 +213,11 @@ export const DashboardContributions = () => {
               step="100"
               value={config.minWordCount}
               onChange={(e) => setConfig(prev => ({ ...prev, minWordCount: parseInt(e.target.value) || 500 }))}
-              className="search-input w-full"
+              className="text-5xl w-full text-center bg-transparent border-b-2 border-perplexity-primary/20 focus:border-perplexity-primary focus:outline-none"
             />
           </div>
-          <div className="flex-1">
-            <label className="block text-sm text-gray-500 mb-1">Maximum</label>
+          <div>
+            <p className="mb-6 text-lg text-gray-500">Maximum words</p>
             <input
               type="number"
               min="100"
@@ -225,190 +225,220 @@ export const DashboardContributions = () => {
               step="100"
               value={config.maxWordCount}
               onChange={(e) => setConfig(prev => ({ ...prev, maxWordCount: parseInt(e.target.value) || 2000 }))}
-              className="search-input w-full"
+              className="text-5xl w-full text-center bg-transparent border-b-2 border-perplexity-primary/20 focus:border-perplexity-primary focus:outline-none"
             />
           </div>
         </div>
-      </div>
-      <div className="flex justify-between">
-        <button
-          onClick={() => setStep(1)}
-          className="btn-secondary"
-        >
-          Back
-        </button>
-        <button
-          onClick={() => setStep(3)}
-          className="btn-primary"
-        >
-          Next
-        </button>
       </div>
     </div>
   );
 
   const renderStep3 = () => (
-    <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium mb-2">What would you like to write about?</label>
-        <div className="space-y-4">
-          {/* Selected Topics Tags */}
-          <div className="flex flex-wrap gap-2">
-            {config.selectedTopics.map(topic => (
-              <span
-                key={topic}
-                className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-perplexity-primary/10 text-perplexity-primary"
-              >
-                {topic}
-                <button
-                  onClick={() => removeTopic(topic)}
-                  className="ml-2 hover:text-red-500 transition-colors"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-
-          {/* Topic Input */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Enter any topic you're interested in (e.g., 'dogs', 'space', 'history')"
-              value={inputValue}
-              onChange={(e) => {
-                setInputValue(e.target.value);
-                setError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && inputValue) {
-                  e.preventDefault();
-                  addTopic(inputValue);
-                }
-              }}
-              className="search-input w-full"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Press Enter after each topic. Our AI will handle the rest!
-            </p>
-          </div>
-
-          {error && <p className="text-sm text-red-500">{error}</p>}
-        </div>
-      </div>
-
-      <div className="flex justify-between">
-        <button
-          onClick={() => setStep(2)}
-          className="btn-secondary"
-        >
-          Back
-        </button>
-        <button
-          onClick={handleGenerateArticles}
-          disabled={isGenerating || config.selectedTopics.length === 0}
-          className="btn-primary"
-        >
-          {isGenerating ? 'Generating...' : 'Start Generation'}
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderProgress = () => (
-    <div className="space-y-4">
-      <div className="relative pt-1">
-        <div className="flex mb-2 items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-perplexity-primary bg-perplexity-primary/10">
-              Progress
-            </span>
-          </div>
-          <div className="text-right">
-            <span className="text-xs font-semibold inline-block text-perplexity-primary">
-              {Math.round(progress)}%
-            </span>
-          </div>
-        </div>
-        <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-perplexity-primary/10">
-          <div
-            style={{ width: `${progress}%` }}
-            className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-perplexity-primary transition-all duration-500"
-          />
-        </div>
-      </div>
-      <p className="text-center text-sm text-gray-500">
-        {error ? (
-          <span className="text-red-500">{error}</span>
-        ) : (
-          'Generating articles... Please wait.'
-        )}
-      </p>
-      {error && (
-        <div className="flex justify-center">
-          <button
-            onClick={() => {
+    <div className="h-full flex flex-col justify-center items-center" style={{ marginTop: '80px' }}>
+      <div className="text-center w-full max-w-xl px-6">
+        <h4 className="text-4xl font-medium mb-16">What topics interest you?</h4>
+        <div className="flex flex-col mb-12">
+          <input
+            type="text"
+            placeholder={config.selectedTopics.length >= 10 ? "Maximum topics reached" : "Type a topic and press Enter"}
+            value={inputValue}
+            onChange={(e) => {
+              setInputValue(e.target.value);
               setError(null);
-              setIsGenerating(false);
             }}
-            className="btn-secondary text-sm"
-          >
-            Try Again
-          </button>
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && inputValue) {
+                e.preventDefault();
+                addTopic(inputValue);
+              }
+            }}
+            disabled={config.selectedTopics.length >= 10}
+            className="w-full p-6 text-2xl bg-transparent border-b-2 border-perplexity-primary/20 focus:border-perplexity-primary focus:outline-none text-center placeholder:text-gray-400 disabled:opacity-50"
+          />
+          {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+          <div className="mt-4 h-[140px] overflow-y-auto px-1">
+            <div className="flex flex-wrap gap-1 justify-center">
+              {config.selectedTopics.map(topic => (
+                <span
+                  key={topic}
+                  className="inline-flex items-center px-2.5 py-1 rounded-full bg-perplexity-primary/10 text-perplexity-primary text-base"
+                >
+                  {topic}
+                  <button
+                    onClick={() => removeTopic(topic)}
+                    className="ml-1 opacity-60 hover:opacity-100"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 
-  const renderAutoPilotModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-lg w-full mx-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold">AI Auto-Pilot</h3>
-          <button
-            onClick={() => setShowAutoPilot(false)}
-            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-          >
-            ×
-          </button>
-        </div>
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (isGenerating && progress === 0) {
+      // Start with quick progress to 15%
+      setSimulatedProgress(15);
+      
+      // Then slowly progress to 85% while waiting
+      interval = setInterval(() => {
+        setSimulatedProgress(prev => {
+          if (prev < 85) {
+            return prev + (Math.random() * 0.5);
+          }
+          return prev;
+        });
+      }, 150);
+    } else if (progress > 0) {
+      // Once real progress starts, jump to that value
+      setSimulatedProgress(progress);
+    } else {
+      setSimulatedProgress(0);
+    }
 
-        {isGenerating ? (
-          renderProgress()
-        ) : (
-          <div className="space-y-6">
-            {/* Progress indicator */}
-            <div className="flex justify-center">
-              <div className="flex items-center space-x-4">
-                {[1, 2, 3].map((stepNumber) => (
-                  <div key={stepNumber} className="flex items-center">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        step === stepNumber
-                          ? 'bg-perplexity-primary text-white'
-                          : step > stepNumber
-                          ? 'bg-green-500 text-white'
-                          : 'bg-gray-200 text-gray-600'
-                      }`}
-                    >
-                      {step > stepNumber ? '✓' : stepNumber}
-                    </div>
-                    {stepNumber < 3 && (
-                      <div
-                        className={`w-12 h-1 ${
-                          step > stepNumber ? 'bg-green-500' : 'bg-gray-200'
-                        }`}
-                      />
-                    )}
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isGenerating, progress]);
+
+  const renderProgress = () => {
+    const displayProgress = simulatedProgress;
+    
+    return (
+      <div className="h-full flex flex-col justify-center items-center">
+        <div className="w-full max-w-lg space-y-12 px-12">
+          <div className="text-center">
+            <h4 className="text-4xl font-medium mb-4">Generating your articles</h4>
+            <p className="text-xl text-gray-500">This might take a minute...</p>
+          </div>
+
+          <div className="space-y-8">
+            <div className="relative">
+              <div className="h-3 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  style={{ 
+                    width: `${displayProgress}%`,
+                    transition: 'width 0.3s ease-out'
+                  }}
+                  className="h-full bg-perplexity-primary relative"
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]" />
+                </div>
+              </div>
+              <div className="mt-4 flex justify-between items-center">
+                <div className="space-y-1">
+                  <div className="text-2xl font-medium">{Math.round(displayProgress)}%</div>
+                  <div className="text-sm text-gray-500">Overall Progress</div>
+                </div>
+                <div className="text-right space-y-1">
+                  <div className="text-2xl font-medium">
+                    {progress === 0 ? '0' : Math.round(displayProgress/100 * config.numberOfArticles)}/{config.numberOfArticles}
                   </div>
-                ))}
+                  <div className="text-sm text-gray-500">Articles Generated</div>
+                </div>
               </div>
             </div>
 
-            {/* Step content */}
-            {step === 1 && renderStep1()}
-            {step === 2 && renderStep2()}
-            {step === 3 && renderStep3()}
+            {error ? (
+              <div className="text-center space-y-4">
+                <p className="text-red-500 text-lg">{error}</p>
+                <button
+                  onClick={() => {
+                    setError(null);
+                    setIsGenerating(false);
+                  }}
+                  className="px-6 py-3 text-base bg-perplexity-primary text-white rounded-lg hover:bg-perplexity-primary/90"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-4">
+                <div className="w-2 h-2 rounded-full bg-perplexity-primary animate-[bounce_1s_infinite]" style={{ animationDelay: '0s' }} />
+                <div className="w-2 h-2 rounded-full bg-perplexity-primary animate-[bounce_1s_infinite]" style={{ animationDelay: '0.2s' }} />
+                <div className="w-2 h-2 rounded-full bg-perplexity-primary animate-[bounce_1s_infinite]" style={{ animationDelay: '0.4s' }} />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAutoPilotModal = () => (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 w-[600px] h-[600px] rounded-xl flex flex-col relative">
+        <button
+          onClick={() => setShowAutoPilot(false)}
+          className="absolute top-4 right-4 h-8 w-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+        >
+          <span className="text-2xl leading-none opacity-60 hover:opacity-100">×</span>
+        </button>
+
+        <div className="px-16 pt-12 pb-8 border-b border-perplexity-primary/20">
+          <div className="flex items-center justify-between relative">
+            <div className={`flex-1 text-center ${step === 1 ? 'text-perplexity-primary' : 'text-gray-400'}`}>
+              <div className="text-3xl font-medium mb-3">1</div>
+              <div className="text-sm font-medium">Number of Articles</div>
+            </div>
+            <div className="absolute left-1/3 right-2/3 top-6 h-[2px] bg-gradient-to-r from-perplexity-primary/20 to-perplexity-primary/20" 
+                 style={{ background: step > 1 ? 'var(--perplexity-primary)' : undefined }} />
+            <div className={`flex-1 text-center ${step === 2 ? 'text-perplexity-primary' : 'text-gray-400'}`}>
+              <div className="text-3xl font-medium mb-3">2</div>
+              <div className="text-sm font-medium">Article Length</div>
+            </div>
+            <div className="absolute left-2/3 right-1/3 top-6 h-[2px] bg-gradient-to-r from-perplexity-primary/20 to-perplexity-primary/20"
+                 style={{ background: step > 2 ? 'var(--perplexity-primary)' : undefined }} />
+            <div className={`flex-1 text-center ${step === 3 ? 'text-perplexity-primary' : 'text-gray-400'}`}>
+              <div className="text-3xl font-medium mb-3">3</div>
+              <div className="text-sm font-medium">Topics</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-hidden">
+          {isGenerating ? renderProgress() : (
+            <div className="h-full">
+              {step === 1 && renderStep1()}
+              {step === 2 && renderStep2()}
+              {step === 3 && renderStep3()}
+            </div>
+          )}
+        </div>
+
+        {!isGenerating && (
+          <div className="px-12 py-8 border-t border-perplexity-primary/20 flex justify-between">
+            {step > 1 ? (
+              <button
+                onClick={() => setStep(step - 1)}
+                className="px-6 py-3 text-base text-perplexity-primary hover:opacity-80"
+              >
+                Back
+              </button>
+            ) : <div />}
+            
+            {step < 3 ? (
+              <button
+                onClick={() => setStep(step + 1)}
+                className="px-6 py-3 text-base bg-perplexity-primary text-white rounded-lg hover:bg-perplexity-primary/90"
+              >
+                Continue
+              </button>
+            ) : (
+              <button
+                onClick={handleGenerateArticles}
+                disabled={isGenerating || config.selectedTopics.length === 0}
+                className="px-6 py-3 text-base bg-perplexity-primary text-white rounded-lg hover:bg-perplexity-primary/90 disabled:opacity-50"
+              >
+                {isGenerating ? 'Generating...' : 'Generate Articles'}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -543,6 +573,19 @@ export const DashboardContributions = () => {
       </div>
     </div>
   );
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes shimmer {
+      0% { transform: translateX(-100%) }
+      100% { transform: translateX(100%) }
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0) }
+      50% { transform: translateY(-6px) }
+    }
+  `;
+  document.head.appendChild(style);
 
   return (
     <div className="space-y-8">
