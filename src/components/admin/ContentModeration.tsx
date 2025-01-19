@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../Sidebar';
-import { collection, query, where, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Article } from '../../types/article';
 import { useAuth } from '../../contexts/AuthContext';
 import { PreviewModal } from '../articles/PreviewModal';
+import { generateSlug } from '../../utils/urlUtils';
 
 interface PendingRevision {
   id: string;
@@ -27,11 +28,14 @@ export const ContentModeration: React.FC = () => {
   const { currentUser } = useAuth();
   const [pendingRevisions, setPendingRevisions] = useState<PendingRevision[]>([]);
   const [approvedRevisions, setApprovedRevisions] = useState<PendingRevision[]>([]);
+  const [allArticles, setAllArticles] = useState<Article[]>([]);
   const [loadingRevisions, setLoadingRevisions] = useState(true);
+  const [loadingArticles, setLoadingArticles] = useState(true);
   const [selectedRevision, setSelectedRevision] = useState<PendingRevision | null>(null);
   const [previewMode, setPreviewMode] = useState<'none' | 'original' | 'revised'>('none');
   const [originalArticle, setOriginalArticle] = useState<Article | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'published'>('pending');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'a-z' | 'z-a'>('newest');
 
   // Redirect non-admin users
   React.useEffect(() => {
@@ -92,6 +96,36 @@ export const ContentModeration: React.FC = () => {
 
     if (isAdmin && !loading) {
       loadRevisions();
+    }
+  }, [isAdmin, loading]);
+
+  // Load published articles
+  useEffect(() => {
+    const loadPublishedArticles = async () => {
+      if (!isAdmin) return;
+      
+      try {
+        setLoadingArticles(true);
+        const articlesRef = collection(db, 'articles');
+        const publishedQuery = query(
+          articlesRef,
+          where('status', '==', 'published')
+        );
+        const articlesSnapshot = await getDocs(publishedQuery);
+        const articles = articlesSnapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        })) as Article[];
+        setAllArticles(articles);
+      } catch (error) {
+        console.error('Error loading articles:', error);
+      } finally {
+        setLoadingArticles(false);
+      }
+    };
+
+    if (isAdmin && !loading) {
+      loadPublishedArticles();
     }
   }, [isAdmin, loading]);
 
@@ -208,6 +242,50 @@ export const ContentModeration: React.FC = () => {
     }
   };
 
+  const handleDeleteArticle = async (articleId: string) => {
+    if (!currentUser || !window.confirm('Are you sure you want to delete this article? This action cannot be undone.')) return;
+
+    try {
+      // Delete the article
+      await deleteDoc(doc(db, 'articles', articleId));
+      
+      // Delete all associated versions
+      const versionsQuery = query(
+        collection(db, 'articleVersions'),
+        where('articleId', '==', articleId)
+      );
+      const versionsSnapshot = await getDocs(versionsQuery);
+      const deletePromises = versionsSnapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+
+      // Update the UI
+      setAllArticles(prev => prev.filter(article => article.id !== articleId));
+      setPendingRevisions(prev => prev.filter(rev => rev.articleId !== articleId));
+      setApprovedRevisions(prev => prev.filter(rev => rev.articleId !== articleId));
+    } catch (error) {
+      console.error('Error deleting article:', error);
+    }
+  };
+
+  const handleDeleteRevision = async (revision: PendingRevision) => {
+    if (!currentUser || !window.confirm('Are you sure you want to delete this revision? This action cannot be undone.')) return;
+
+    try {
+      // Delete the revision
+      await deleteDoc(doc(db, 'articleVersions', revision.id));
+
+      // Update the UI
+      if (activeTab === 'pending') {
+        setPendingRevisions(prev => prev.filter(rev => rev.id !== revision.id));
+      } else {
+        setApprovedRevisions(prev => prev.filter(rev => rev.id !== revision.id));
+      }
+      setSelectedRevision(null);
+    } catch (error) {
+      console.error('Error deleting revision:', error);
+    }
+  };
+
   const renderRevisionsList = (revisions: PendingRevision[]) => {
     if (revisions.length === 0) {
       return <p className="section-text">No {activeTab} revisions to display.</p>;
@@ -232,28 +310,42 @@ export const ContentModeration: React.FC = () => {
                   Edited by {revision.author} • {new Date(revision.timestamp).toLocaleString()}
                 </p>
               </div>
-              {selectedRevision?.id === revision.id && activeTab === 'pending' && (
-                <div className="flex space-x-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleApproveRevision(revision);
-                    }}
-                    className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRejectRevision(revision);
-                    }}
-                    className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                  >
-                    Reject
-                  </button>
-                </div>
-              )}
+              <div className="flex space-x-2">
+                {selectedRevision?.id === revision.id && activeTab === 'pending' && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleApproveRevision(revision);
+                      }}
+                      className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRejectRevision(revision);
+                      }}
+                      className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteRevision(revision);
+                  }}
+                  className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                  title="Delete revision"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
             </div>
             {selectedRevision?.id === revision.id && (
               <>
@@ -291,7 +383,110 @@ export const ContentModeration: React.FC = () => {
     );
   };
 
-  if (loading || loadingRevisions) {
+  const getSortedArticles = (articles: Article[]) => {
+    const sorted = [...articles];
+    
+    const getTimestamp = (date: any): number => {
+      if (typeof date === 'object' && 'seconds' in date) {
+        return date.seconds;
+      }
+      return new Date(date).getTime() / 1000;
+    };
+
+    switch (sortBy) {
+      case 'newest':
+        return sorted.sort((a, b) => getTimestamp(b.createdAt) - getTimestamp(a.createdAt));
+      case 'oldest':
+        return sorted.sort((a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt));
+      case 'a-z':
+        return sorted.sort((a, b) => a.title.localeCompare(b.title));
+      case 'z-a':
+        return sorted.sort((a, b) => b.title.localeCompare(a.title));
+      default:
+        return sorted;
+    }
+  };
+
+  const renderArticlesList = () => {
+    if (allArticles.length === 0) {
+      return <p className="section-text">No articles found.</p>;
+    }
+
+    const sortedArticles = getSortedArticles(allArticles);
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-end mb-4">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="a-z">A to Z</option>
+            <option value="z-a">Z to A</option>
+          </select>
+        </div>
+        {sortedArticles.map(article => (
+          <div 
+            key={article.id} 
+            className="p-4 border rounded-lg border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-medium">
+                  <a 
+                    href={`/plexi/${article.slug || generateSlug(article.title)}`}
+                    className="hover:text-perplexity-primary"
+                  >
+                    {article.title}
+                  </a>
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  By {article.author} • Created {new Date(article.createdAt).toLocaleString()}
+                </p>
+                <div className="mt-2 flex items-center space-x-2">
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    article.status === 'published' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
+                    article.status === 'under_review' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' :
+                    'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-400'
+                  }`}>
+                    {article.status.split('_').map(word => 
+                      word.charAt(0).toUpperCase() + word.slice(1)
+                    ).join(' ')}
+                  </span>
+                  <span className="text-sm text-gray-500">•</span>
+                  <span className="text-sm text-gray-500">
+                    {article.content.split(' ').length} words
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => navigate(`/plexi/${article.slug || generateSlug(article.title)}/edit`)}
+                  className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteArticle(article.id)}
+                  className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                  title="Delete article"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  if (loading || loadingRevisions || loadingArticles) {
     return (
       <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
         <Sidebar />
@@ -341,9 +536,29 @@ export const ContentModeration: React.FC = () => {
                 >
                   Approved Revisions ({approvedRevisions.length})
                 </button>
+                <button
+                  onClick={() => setActiveTab('published')}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    activeTab === 'published'
+                      ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  Published Articles ({allArticles.length})
+                </button>
               </div>
               
-              {renderRevisionsList(activeTab === 'pending' ? pendingRevisions : approvedRevisions)}
+              {activeTab === 'published' ? (
+                loadingArticles ? (
+                  <div className="flex justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-perplexity-primary"></div>
+                  </div>
+                ) : (
+                  renderArticlesList()
+                )
+              ) : (
+                renderRevisionsList(activeTab === 'pending' ? pendingRevisions : approvedRevisions)
+              )}
             </div>
             
             <div className="perplexipedia-card">
