@@ -17,7 +17,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<UserCredential>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  updateUserProfile: (displayName: string) => Promise<void>;
+  updateUserProfile: (displayName: string, user?: User) => Promise<void>;
   loading: boolean;
 }
 
@@ -53,9 +53,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return sendPasswordResetEmail(auth, email);
   };
 
-  const updateUserProfile = async (displayName: string) => {
-    if (!currentUser) throw new Error('No user logged in');
-    await updateProfile(currentUser, { displayName });
+  const updateUserProfile = async (displayName: string, user?: User) => {
+    const targetUser = user || currentUser;
+    if (!targetUser) throw new Error('No user logged in');
+    await updateProfile(targetUser, { displayName });
   };
 
   useEffect(() => {
