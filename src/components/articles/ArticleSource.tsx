@@ -1,14 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Article } from '../../types/article';
 import { Sidebar } from '../Sidebar';
 import { getArticleIdFromSlug } from '../../utils/urlUtils';
 
+interface ArticleVersion {
+  id: string;
+  articleId: string;
+  version: number;
+  content: string;
+  title: string;
+  author: string;
+  authorId: string;
+  timestamp: any;
+  changes: string;
+}
+
 export const ArticleSource: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
-  const [article, setArticle] = useState<Article | null>(null);
+  const [searchParams] = useSearchParams();
+  const version = searchParams.get('version');
+  const [articleData, setArticleData] = useState<Article | ArticleVersion | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,11 +38,28 @@ export const ArticleSource: React.FC = () => {
           return;
         }
 
-        const articleDoc = await getDoc(doc(db, 'articles', articleId));
-        if (articleDoc.exists()) {
-          setArticle(articleDoc.data() as Article);
+        if (version) {
+          // Fetch specific version
+          const versionsQuery = query(
+            collection(db, 'articleVersions'),
+            where('articleId', '==', articleId),
+            where('version', '==', parseInt(version))
+          );
+          
+          const versionsSnapshot = await getDocs(versionsQuery);
+          if (!versionsSnapshot.empty) {
+            setArticleData(versionsSnapshot.docs[0].data() as ArticleVersion);
+          } else {
+            setError('Version not found');
+          }
         } else {
-          setError('Article not found');
+          // Fetch current version
+          const articleDoc = await getDoc(doc(db, 'articles', articleId));
+          if (articleDoc.exists()) {
+            setArticleData(articleDoc.data() as Article);
+          } else {
+            setError('Article not found');
+          }
         }
       } catch (err) {
         setError('Failed to load article');
@@ -39,10 +70,10 @@ export const ArticleSource: React.FC = () => {
     };
 
     fetchArticle();
-  }, [slug]);
+  }, [slug, version]);
 
-  const formatSource = (article: Article) => {
-    const lines = JSON.stringify(article, null, 2).split('\n');
+  const formatSource = (data: Article | ArticleVersion) => {
+    const lines = JSON.stringify(data, null, 2).split('\n');
     return lines.map((line, index) => (
       <div key={index} className="whitespace-pre-wrap break-all">
         {line}
@@ -78,7 +109,7 @@ export const ArticleSource: React.FC = () => {
     );
   }
 
-  if (!article) {
+  if (!articleData) {
     return (
       <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
         <Sidebar />
@@ -97,11 +128,12 @@ export const ArticleSource: React.FC = () => {
       <main className="flex-1 transition-all duration-300 ease-in-out">
         <div className="perplexipedia-card">
           <h1 className="text-2xl font-linux-libertine mb-4 section-title">
-            Source of: {article.title}
+            Source of: {articleData.title}
+            {version && <span className="text-lg text-gray-500 ml-2">(Version {version})</span>}
           </h1>
           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg font-mono text-sm">
             <code className="block">
-              {formatSource(article)}
+              {formatSource(articleData)}
             </code>
           </div>
         </div>

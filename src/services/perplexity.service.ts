@@ -148,6 +148,7 @@ export class PerplexityAIService implements IAIService {
         search_recency_filter: 'month',
         return_images: false,
         return_related_questions: false,
+        max_tokens: 12000,
         stream: false
       }),
     });
@@ -305,6 +306,13 @@ export class PerplexityAIService implements IAIService {
             content: `You are an expert encyclopedia article writer, following Wikipedia's style and conventions.
             Create a comprehensive, well-structured encyclopedia article about the given topic.
             
+            STRICT WORD COUNT REQUIREMENT:
+            - You MUST generate content between ${minWordCount} and ${maxWordCount} words
+            - This is a hard requirement, not a suggestion
+            - Before completing your response, count the words and adjust if needed
+            - If content is too short, expand with more details
+            - If content is too long, condense while maintaining key information
+            
             Title Requirements:
             1. Use Wikipedia-style titles:
                - Should be a noun or noun phrase
@@ -351,11 +359,11 @@ export class PerplexityAIService implements IAIService {
                - Place citations after relevant statements
                - Multiple citations can be used together [1][2]
                - DO NOT create a References section
-            
-            6. Word count: ${minWordCount}-${maxWordCount} words
 
-            Remember: This is an encyclopedia article, not a list or outline.
-            Focus on well-written, flowing paragraphs that explain the topic thoroughly.`
+            Remember: 
+            1. This is an encyclopedia article, not a list or outline
+            2. Focus on well-written, flowing paragraphs that explain the topic thoroughly
+            3. YOU MUST MEET THE WORD COUNT REQUIREMENT OF ${minWordCount}-${maxWordCount} WORDS`
           },
           {
             role: "user",
