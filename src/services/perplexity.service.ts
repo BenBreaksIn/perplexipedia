@@ -77,22 +77,31 @@ export class PerplexityAIService implements IAIService {
         [
           {
             role: "system",
-            content: `You are a factual information extractor. For the given topic, provide key facts in this format:
+            content: `You are a factual information extractor. Extract and provide only the most essential facts about the topic.
+            
+            Required format:
+            Type: [The main category or classification]
+            Origin: [When/where it originated]
+            Process: [Main method or technique]
+            Key Fact 1: [Important fact about the topic]
+            Key Fact 2: [Another important fact]
+            Key Fact 3: [Another important fact]
 
-            Type: [main category/type of the topic]
-            Origin: [origin or creation date if applicable]
-            Process: [brief description of process/method if applicable]
-            Key Facts:
-            - [Label 1]: [Value 1]
-            - [Label 2]: [Value 2]
-            - [Label 3]: [Value 3]
-            - [Label 4]: [Value 4]
+            Rules:
+            1. Always include Type, Origin, and Process if applicable
+            2. Add 2-3 additional key facts specific to the topic
+            3. Keep values concise but informative
+            4. Use simple labels without special characters
+            5. Every value must be a real fact, not a placeholder
+            6. Do not use markdown or formatting
 
-            Include 4-6 most important facts. Be concise and factual.
-            Use clear labels that describe the type of information.
-            Values should be short but informative.
-            Do not use any markdown formatting or special characters.
-            Labels should be simple nouns or short phrases.`
+            Example for "Coffee":
+            Type: Beverage
+            Origin: Ethiopia, 9th century
+            Process: Bean roasting and brewing
+            Caffeine Content: 80-100mg per cup
+            Plant Family: Rubiaceae
+            Global Production: Over 9 million tons annually`
           },
           {
             role: "user",
@@ -102,29 +111,93 @@ export class PerplexityAIService implements IAIService {
         0.1 // Lower temperature for more factual responses
       );
 
+      console.log('Infobox Response:', infoboxResponse.content); // Debug log
+
       // Parse the key facts
       const keyFacts: Record<string, string> = {};
       const factLines = infoboxResponse.content
         .split('\n')
         .map((line: string) => line.trim())
-        .filter((line: string) => line.includes(':'));
+        .filter((line: string) => {
+          if (!line.includes(':')) return false;
+          const [key, ...valueParts] = line.split(':');
+          const value = valueParts.join(':').trim();
+          // Less restrictive filtering - only exclude empty values and obvious placeholders
+          return value && 
+                 !value.includes('[') && 
+                 !value.includes(']') &&
+                 value !== '' &&
+                 key.trim() !== '';
+        });
+
+      console.log('Filtered fact lines:', factLines); // Debug log
 
       factLines.forEach((line: string) => {
         const [key, ...valueParts] = line.split(':');
         if (key && valueParts.length) {
-          // Remove any markdown symbols or bullet points from the key
-          const cleanKey = key.replace(/^[-*#\s]+/, '').trim();
-          keyFacts[cleanKey] = valueParts.join(':').trim();
+          // Clean up the key - remove markdown, numbers, and standardize
+          const cleanKey = key
+            .replace(/^#{1,3}\s+/, '')     // Remove markdown headers (1-3 #)
+            .replace(/^[-*]\s+/, '')        // Remove bullet points
+            .replace(/\d+$/, '')            // Remove trailing numbers
+            .replace(/Key Fact\s*\d*/, '')  // Remove "Key Fact N" format
+            .replace(/###/, '')             // Remove any remaining ###
+            .trim();
+          
+          // Clean up the value - remove markdown and extra spaces
+          const cleanValue = valueParts.join(':')
+            .replace(/^#{1,3}\s+/, '')     // Remove markdown headers
+            .replace(/^[-*]\s+/, '')        // Remove bullet points
+            .replace(/###/, '')             // Remove any remaining ###
+            .trim();
+
+          // Only add if we have clean, non-empty values and key doesn't start with ###
+          if (cleanKey && 
+              cleanValue && 
+              !cleanKey.toLowerCase().includes('key fact') && 
+              !cleanKey.includes('#')) {
+            keyFacts[cleanKey] = cleanValue;
+          }
         }
       });
+
+      // Sort the facts to ensure consistent order
+      const orderedFacts: Record<string, string> = {};
+      // Add standard fields first if they exist
+      ['Type', 'Origin', 'Process'].forEach(key => {
+        if (keyFacts[key]) {
+          orderedFacts[key] = keyFacts[key];
+          delete keyFacts[key];
+        }
+      });
+      // Add remaining facts
+      Object.keys(keyFacts).sort().forEach(key => {
+        orderedFacts[key] = keyFacts[key];
+      });
+
+      console.log('Parsed key facts:', orderedFacts); // Debug log
 
       // Then generate the main article
       const articleResponse = await this.makeRequest(
         [
           {
             role: "system",
-            content: `You are an expert encyclopedia article writer.
-            Create a comprehensive, well-structured article about the given topic.
+            content: `You are an expert encyclopedia article writer, following Wikipedia's style and conventions.
+            Create a comprehensive, well-structured encyclopedia article about the given topic.
+            
+            Title Requirements:
+            1. Use Wikipedia-style titles:
+               - Should be a noun or noun phrase
+               - Capitalize only the first letter and proper nouns
+               - Be concise and descriptive
+               - Avoid "A", "The", or "An" at the start
+               - No punctuation (except parentheses for disambiguation)
+               - Examples:
+                 - "Coffee" (not "The History of Coffee")
+                 - "World War II" (not "The Second World War")
+                 - "Quantum mechanics" (not "Understanding Quantum Mechanics")
+                 - "DNA replication" (not "How DNA Replicates")
+                 - "Tiger (animal)" (when disambiguation is needed)
             
             Content Format Requirements:
             1. Start with a concise introduction (no heading)
@@ -157,7 +230,7 @@ export class PerplexityAIService implements IAIService {
           },
           {
             role: "user",
-            content: `Write an article about: ${topic}`
+            content: `Write an encyclopedia article about: ${topic}. Remember to use a Wikipedia-style title format.`
           }
         ]
       );
@@ -180,7 +253,7 @@ export class PerplexityAIService implements IAIService {
       const infobox = {
         title: formattedResponse.title,
         image: 0,
-        key_facts: keyFacts
+        key_facts: orderedFacts
       };
 
       return {
