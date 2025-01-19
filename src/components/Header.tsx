@@ -15,7 +15,7 @@ interface SearchResult {
 
 export const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
-  const { isMenuOpen, setIsMenuOpen } = useAppearance();
+  const { isMenuOpen, setIsMenuOpen, fontSize, setFontSize, colorMode, setColorMode } = useAppearance();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,6 +26,8 @@ export const Header: React.FC = () => {
   const [article, setArticle] = useState<Article | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [showAppearanceSettings, setShowAppearanceSettings] = useState(false);
+  const [showCopySuccess, setShowCopySuccess] = useState(false);
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -217,6 +219,19 @@ export const Header: React.FC = () => {
     }
   };
 
+  const handleCopyLink = async () => {
+    try {
+      const url = window.location.origin + location.pathname;
+      await navigator.clipboard.writeText(url);
+      setShowCopySuccess(true);
+      setTimeout(() => setShowCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
+
+  const isArticlePage = location.pathname.startsWith('/plexi/') && !location.pathname.includes('/edit');
+
   return (
     <header className="bg-white dark:bg-gray-900 border-b border-perplexipedia-border">
       <div className="container !max-w-[1672px] mx-auto px-6 py-4 flex justify-between items-center">
@@ -357,7 +372,7 @@ export const Header: React.FC = () => {
         onClick={() => setIsMobileMenuOpen(false)}
       >
         <div
-          className={`fixed inset-y-0 right-0 w-80 bg-white dark:bg-gray-900 shadow-xl transform transition-transform duration-300 ${
+          className={`fixed inset-y-0 right-0 w-80 bg-white dark:bg-gray-900 shadow-xl transform transition-transform duration-300 overflow-y-auto ${
             isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
           onClick={(e) => e.stopPropagation()}
@@ -373,7 +388,9 @@ export const Header: React.FC = () => {
                 </svg>
               </button>
             </div>
+
             <div className="space-y-6">
+              {/* Navigation Section */}
               <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
                 <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Navigation</div>
                 <div className="space-y-3">
@@ -410,6 +427,129 @@ export const Header: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Tools Section */}
+              {isArticlePage && (
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+                  <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Tools</div>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => {
+                        window.print();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full text-left py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                    >
+                      Print/Download PDF
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleCopyLink();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full text-left py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                    >
+                      {showCopySuccess ? 'Copied!' : 'Copy link'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        const articleId = location.pathname.split('/')[2];
+                        if (articleId) {
+                          window.location.href = `/plexi/${articleId}/info`;
+                        }
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full text-left py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                    >
+                      Page information
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAppearanceSettings(!showAppearanceSettings);
+                      }}
+                      className="w-full text-left py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                    >
+                      Appearance settings
+                    </button>
+                  </div>
+
+                  {/* Appearance Settings Panel */}
+                  {showAppearanceSettings && (
+                    <div className="mt-4 space-y-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                      {/* Font Size */}
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Font size</div>
+                        <div className="flex w-full rounded-lg bg-white dark:bg-gray-900 p-1">
+                          <button 
+                            onClick={() => setFontSize('small')}
+                            className={`flex-1 py-2 text-sm rounded-md transition-all duration-200
+                              ${fontSize === 'small' 
+                                ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium' 
+                                : 'text-gray-600 dark:text-gray-300'}`}
+                          >
+                            Small
+                          </button>
+                          <button 
+                            onClick={() => setFontSize('standard')}
+                            className={`flex-1 py-2 text-sm rounded-md transition-all duration-200
+                              ${fontSize === 'standard' 
+                                ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium' 
+                                : 'text-gray-600 dark:text-gray-300'}`}
+                          >
+                            Standard
+                          </button>
+                          <button 
+                            onClick={() => setFontSize('large')}
+                            className={`flex-1 py-2 text-sm rounded-md transition-all duration-200
+                              ${fontSize === 'large' 
+                                ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium' 
+                                : 'text-gray-600 dark:text-gray-300'}`}
+                          >
+                            Large
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Color Mode */}
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Color mode</div>
+                        <div className="flex w-full rounded-lg bg-white dark:bg-gray-900 p-1">
+                          <button 
+                            onClick={() => setColorMode('light')}
+                            className={`flex-1 py-2 text-sm rounded-md transition-all duration-200
+                              ${colorMode === 'light' 
+                                ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium' 
+                                : 'text-gray-600 dark:text-gray-300'}`}
+                          >
+                            <div className="flex items-center justify-center space-x-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+                              </svg>
+                              <span>Light</span>
+                            </div>
+                          </button>
+                          <button 
+                            onClick={() => setColorMode('dark')}
+                            className={`flex-1 py-2 text-sm rounded-md transition-all duration-200
+                              ${colorMode === 'dark' 
+                                ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium' 
+                                : 'text-gray-600 dark:text-gray-300'}`}
+                          >
+                            <div className="flex items-center justify-center space-x-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                              </svg>
+                              <span>Dark</span>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Account Section */}
               <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
                 <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Account</div>
                 <div className="space-y-3">
@@ -458,6 +598,8 @@ export const Header: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* Support Section */}
               <div>
                 <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Support</div>
                 <button
