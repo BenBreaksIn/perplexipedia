@@ -1,7 +1,14 @@
+interface InfoBox {
+  title: string;
+  image: number;
+  key_facts: Record<string, string>;
+}
+
 interface FormattedResponse {
   title: string;
   content: string;
   references: string[];
+  infobox?: InfoBox;
 }
 
 export const formatPerplexityResponse = (response: any, citations: Array<{ id: number; url: string; title: string }> = []): FormattedResponse | null => {

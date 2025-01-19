@@ -72,7 +72,54 @@ export class PerplexityAIService implements IAIService {
         return null;
       }
 
-      const response = await this.makeRequest(
+      // First, get key facts about the topic
+      const infoboxResponse = await this.makeRequest(
+        [
+          {
+            role: "system",
+            content: `You are a factual information extractor. For the given topic, provide key facts in this format:
+
+            Type: [main category/type of the topic]
+            Origin: [origin or creation date if applicable]
+            Process: [brief description of process/method if applicable]
+            Key Facts:
+            - [Label 1]: [Value 1]
+            - [Label 2]: [Value 2]
+            - [Label 3]: [Value 3]
+            - [Label 4]: [Value 4]
+
+            Include 4-6 most important facts. Be concise and factual.
+            Use clear labels that describe the type of information.
+            Values should be short but informative.
+            Do not use any markdown formatting or special characters.
+            Labels should be simple nouns or short phrases.`
+          },
+          {
+            role: "user",
+            content: `Extract key facts about: ${topic}`
+          }
+        ],
+        0.1 // Lower temperature for more factual responses
+      );
+
+      // Parse the key facts
+      const keyFacts: Record<string, string> = {};
+      const factLines = infoboxResponse.content
+        .split('\n')
+        .map((line: string) => line.trim())
+        .filter((line: string) => line.includes(':'));
+
+      factLines.forEach((line: string) => {
+        const [key, ...valueParts] = line.split(':');
+        if (key && valueParts.length) {
+          // Remove any markdown symbols or bullet points from the key
+          const cleanKey = key.replace(/^[-*#\s]+/, '').trim();
+          keyFacts[cleanKey] = valueParts.join(':').trim();
+        }
+      });
+
+      // Then generate the main article
+      const articleResponse = await this.makeRequest(
         [
           {
             role: "system",
@@ -116,9 +163,9 @@ export class PerplexityAIService implements IAIService {
       );
 
       // Format the response
-      const formattedResponse = formatPerplexityResponse(response.content, response.citations);
+      const formattedResponse = formatPerplexityResponse(articleResponse.content, articleResponse.citations);
       if (!formattedResponse) {
-        console.error('Failed to format response:', response);
+        console.error('Failed to format response:', articleResponse);
         return null;
       }
 
@@ -128,6 +175,13 @@ export class PerplexityAIService implements IAIService {
       if (!currentUser) {
         throw new Error('User must be logged in to generate articles');
       }
+
+      // Create the infobox structure
+      const infobox = {
+        title: formattedResponse.title,
+        image: 0,
+        key_facts: keyFacts
+      };
 
       return {
         title: formattedResponse.title,
@@ -146,7 +200,8 @@ export class PerplexityAIService implements IAIService {
         }],
         isAIGenerated: true,
         categoriesLockedByAI: true,
-        citations: response.citations
+        citations: articleResponse.citations,
+        infobox
       };
     } catch (error) {
       console.error('Error generating article:', error);
