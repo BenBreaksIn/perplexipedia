@@ -1,6 +1,6 @@
 # Perplexipedia
 
-Perplexipedia is an innovative platform that aims to create an unbiased, AI-enhanced encyclopedia where knowledge is collaboratively curated and verified. Our mission is to provide accurate, well-sourced information while leveraging artificial intelligence to assist in content creation and fact-checking.
+Perplexipedia is an innovative platform that aims to create an unbiased, AI-enhanced encyclopedia where knowledge is collaboratively curated and verified. Our mission is to provide accurate, well-sourced information while leveraging artificial intelligence to assist in content creation and fact-checking..
 
 ## 🌟 Project Status
 
