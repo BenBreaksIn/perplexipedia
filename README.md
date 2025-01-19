@@ -37,8 +37,8 @@ In progress:
 
 ### Implemented Features
 - **Advanced AI Integration**
-  - Dual AI article generation (OpenAI GPT-4 and Perplexity AI)
-  - Content moderation with GPT-4
+  - Dual AI article generation (OpenAI GPT-4o and Perplexity AI)
+  - Content moderation with GPT-4o
   - Automated fact-checking and source verification
   - Smart topic suggestions and categorization
   - Automatic infobox generation

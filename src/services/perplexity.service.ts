@@ -508,6 +508,64 @@ export class PerplexityAIService implements IAIService {
     }
   }
 
+  async expandContent(selectedContent: string, context: string): Promise<{ expandedContent: string }> {
+    try {
+      const response = await this.makeRequest([
+        {
+          role: "system",
+          content: `You are an expert encyclopedia article writer. When expanding content, follow these strict rules:
+
+          CRITICAL HEADER RULES:
+          1. NEVER modify, remove, or change any existing headers (lines starting with ## or ###)
+          2. If the selected text starts with a header (## or ###), ALWAYS keep it as the first line
+          3. If expanding under a header, keep the header's context and theme
+          4. Only add new subheaders (###) if they logically fit under the main section (##)
+          
+          WRITING STYLE:
+          1. Use formal, academic tone throughout
+          2. Write in well-structured paragraphs (3-5 sentences each)
+          3. NEVER use bullet points or lists
+          4. Maintain encyclopedic objectivity and neutrality
+          5. Focus on factual information and academic sources
+          
+          CONTENT STRUCTURE:
+          1. Each paragraph should flow logically from the previous one
+          2. Start with core concepts, then move to specific details
+          3. Include relevant dates, figures, and statistics with citations [1]
+          4. Keep technical accuracy and detail level consistent
+          
+          INTEGRATION RULES:
+          1. Match the writing style of the surrounding context
+          2. Create smooth transitions with existing content
+          3. Keep any existing citations and add new ones as [n]
+          4. Preserve any existing markdown formatting
+          5. Ensure the expansion reads as a natural continuation
+          
+          ABSOLUTELY AVOID:
+          - Modifying or removing any ## or ### headers
+          - Bullet points or numbered lists
+          - Informal language or colloquialisms
+          - Personal opinions or subjective statements
+          - Marketing or promotional language
+          - Redundant information from the context
+          
+          Return the expanded content with all original headers intact.`
+        },
+        {
+          role: "user",
+          content: `Context: ${context}\n\nExpand this content while preserving all headers:\n${selectedContent}`
+        }
+      ], 0.7);
+
+      return {
+        expandedContent: response.content || selectedContent
+      };
+    } catch (error) {
+      console.error('Error expanding content:', error);
+      return { expandedContent: selectedContent };
+    }
+  }
+
   async generateArticles(
     topic: string,
     count: number,

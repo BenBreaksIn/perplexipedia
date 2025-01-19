@@ -1,4 +1,4 @@
-export type ArticleStatus = 'draft' | 'published' | 'under_review';
+export type ArticleStatus = 'draft' | 'published' | 'under_review' | 'submit_revision' | 'archived';
 
 export interface ArticleVersion {
     id: string;
@@ -35,7 +35,7 @@ export interface Article {
     id: string;
     title: string;
     content: string;
-    status: 'draft' | 'under_review' | 'published' | 'archived';
+    status: ArticleStatus;
     author: string;
     authorId: string;  // User ID of the author
     createdAt: Date;

@@ -22,14 +22,29 @@ export const Signup: React.FC = () => {
     try {
       setError('');
       setLoading(true);
+      
+      // First create the account
       const result = await signup(email, password);
+      
+      // Then update the profile if we have a display name
       if (displayName && result.user) {
-        await updateUserProfile(displayName);
+        try {
+          await updateUserProfile(displayName, result.user);
+        } catch (profileErr) {
+          console.error('Profile update failed:', profileErr);
+          // Don't block the signup process for profile update failures
+        }
       }
+      
+      // Navigate to dashboard after successful account creation
       navigate('/dashboard');
-    } catch (err) {
-      setError('Failed to create an account. Please try again.');
-      console.error(err);
+    } catch (err: any) {
+      // Handle specific Firebase auth errors
+      const errorMessage = err?.code ? 
+        err.code.replace('auth/', '').replace(/-/g, ' ') : 
+        'Failed to create an account. Please try again.';
+      setError(errorMessage);
+      console.error('Signup error:', err);
     } finally {
       setLoading(false);
     }

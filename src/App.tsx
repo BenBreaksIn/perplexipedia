@@ -11,6 +11,7 @@ import { ArticleView } from './components/articles/ArticleView'
 import { ArticleSource } from './components/articles/ArticleSource'
 import { ArticleHistory } from './components/articles/ArticleHistory'
 import { ArticleInformation } from './components/articles/ArticleInformation'
+import { ArticleManagement } from './components/articles/ArticleManagement'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 
 function AppContent() {
@@ -31,6 +32,7 @@ function AppContent() {
           <Route path="/plexi/:slug/source" element={<ArticleSource />} />
           <Route path="/plexi/:slug/history" element={<ArticleHistory />} />
           <Route path="/plexi/:slug/info" element={<ArticleInformation />} />
+          <Route path="/plexi/:slug/edit" element={<ArticleManagement />} />
           <Route path="/" element={
             <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
               <Sidebar />

@@ -24,50 +24,52 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
         const loadArticle = async () => {
             if (!currentUser) return;
 
+            // If there's no id or slug, we're creating a new article
+            if (!id && !slug) {
+                setLoading(false);
+                return;
+            }
+
             try {
                 setLoading(true);
-                console.log('Loading article with:', { id, slug });
-                let articleId: string | undefined = id;
-
+                let articleId: string | undefined;
+                
                 if (slug) {
-                    console.log('Getting article ID from slug:', slug);
                     const foundId = await getArticleIdFromSlug(slug);
-                    console.log('Found article ID:', foundId);
-                    if (!foundId) {
-                        console.error('Article not found');
-                        return;
-                    }
-                    articleId = foundId;
+                    articleId = foundId || undefined;
+                } else if (id) {
+                    articleId = id;
                 }
 
                 if (!articleId) {
-                    console.log('No article ID found');
+                    console.error('Article not found');
+                    navigate('/');
                     return;
                 }
 
-                console.log('Fetching article with ID:', articleId);
                 const docRef = doc(db, 'articles', articleId);
                 const docSnap = await getDoc(docRef);
-                
+
                 if (docSnap.exists()) {
-                    const articleData = {
-                        id: docSnap.id,
-                        ...docSnap.data()
-                    } as Article;
-                    console.log('Article loaded:', articleData);
-                    setArticle(articleData);
+                    const articleData = docSnap.data() as Article;
+                    setArticle({
+                        ...articleData,
+                        id: docSnap.id
+                    });
                 } else {
-                    console.log('Article document not found');
+                    console.error('Article not found');
+                    navigate('/');
                 }
             } catch (error) {
                 console.error('Error loading article:', error);
+                navigate('/');
             } finally {
                 setLoading(false);
             }
         };
 
         loadArticle();
-    }, [id, slug, currentUser]);
+    }, [id, slug, currentUser, navigate]);
 
     const handleSave = async (articleData: Partial<Article>) => {
         if (!currentUser) return;
@@ -225,23 +227,12 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
                     <div className="space-x-4">
                         <button
                             onClick={() => setView('edit')}
-                            className={`px-4 py-2 rounded ${
-                                view === 'edit'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-200 text-gray-700'
-                            }`}
+                            className={`p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors`}
+                            title="Edit"
                         >
-                            Edit
-                        </button>
-                        <button
-                            onClick={() => setView('history')}
-                            className={`px-4 py-2 rounded ${
-                                view === 'history'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-200 text-gray-700'
-                            }`}
-                        >
-                            History
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
                         </button>
                     </div>
                 )}

@@ -16,6 +16,7 @@ export interface IAIService {
   suggestEdits(content: string): Promise<{ suggestions: string[]; improvedContent?: string }>;
   generateCategories(content: string): Promise<Array<{ id: string; name: string }>>;
   generateArticles(topic: string, count: number, existingArticles?: Article[], minWordCount?: number, maxWordCount?: number): Promise<Array<Partial<Article>>>;
+  expandContent(selectedContent: string, context: string): Promise<{ expandedContent: string }>;
 }
 
 export { OpenAIService, PerplexityAIService }; 

@@ -79,8 +79,6 @@ export const Sidebar: React.FC<{ content?: string }> = ({ content }) => {
               e.preventDefault();
               window.print();
             }} className="nav-link block">Print/Download PDF</a>
-            <a href="#" className="nav-link block">What links here</a>
-            <a href="#" className="nav-link block">Related changes</a>
             <button 
               onClick={handleCopyLink} 
               className={`nav-link block w-full text-left ${showCopySuccess ? 'text-green-600 dark:text-green-400' : ''}`}

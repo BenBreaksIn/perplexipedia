@@ -25,9 +25,11 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [images, setImages] = useState<ArticleImage[]>(article?.images || []);
   const [infobox, setInfobox] = useState<InfoBox | undefined>(article?.infobox);
-  const { generateArticle, suggestEdits, generateCategories, isLoading, error } = useAI();
+  const { generateArticle, generateCategories, expandContent, isLoading, error } = useAI();
   const [isGeneratingCategories, setIsGeneratingCategories] = useState(false);
+  const [isExpanding, setIsExpanding] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [editSummary, setEditSummary] = useState('');
 
   // Markdown toolbar handlers
   const insertMarkdown = (prefix: string, suffix: string = '') => {
@@ -78,28 +80,43 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
       status,
       images,
       infobox,
-      categoriesLockedByAI: article?.categoriesLockedByAI
+      categoriesLockedByAI: article?.categoriesLockedByAI,
+      ...(status === 'submit_revision' && {
+        versions: [
+          ...(article?.versions || []),
+          {
+            id: Date.now().toString(),
+            content,
+            author: article?.author || '',
+            timestamp: new Date(),
+            changes: editSummary
+          }
+        ]
+      })
     });
+    if (status === 'submit_revision') {
+      setEditSummary('');
+    }
   };
 
   const handleAIGenerate = async () => {
     if (!title) return;
     const result = await generateArticle(title);
     if (result) {
-      // Remove the title and any empty lines at the start of the content
-      const contentLines = result.content?.split('\n') || [];
-      let startIndex = 0;
-      
-      // Skip the title line (# Title) and any empty lines after it
-      while (startIndex < contentLines.length && 
-        (contentLines[startIndex].trim().startsWith('# ') || 
-         contentLines[startIndex].trim() === '')) {
-        startIndex++;
+      // If there's existing content, use it as context for the generation
+      if (content.trim()) {
+        const combinedContent = result.content?.split('\n') || [];
+        // Remove any title line and empty lines at the start
+        while (combinedContent.length > 0 && 
+          (combinedContent[0].trim().startsWith('# ') || 
+           combinedContent[0].trim() === '')) {
+          combinedContent.shift();
+        }
+        setContent(content + '\n\n' + combinedContent.join('\n').trim());
+      } else {
+        setContent(result.content || '');
       }
       
-      const cleanContent = contentLines.slice(startIndex).join('\n').trim();
-      
-      setContent(cleanContent);
       setSelectedCategories(result.categories || []);
       setSelectedTags(result.tags || []);
       setImages(result.images || []);
@@ -120,11 +137,35 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     }
   };
 
-  const handleAISuggest = async () => {
-    if (!content) return;
-    const suggestions = await suggestEdits(content);
-    if (suggestions.improvedContent) {
-      setContent(suggestions.improvedContent);
+  const handleExpandContent = async () => {
+    if (!textareaRef.current) return;
+    
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const selectedText = content.substring(start, end);
+    
+    if (!selectedText) {
+      alert('Please select the text you want to expand');
+      return;
+    }
+
+    // Get surrounding context (500 characters before and after)
+    const contextStart = Math.max(0, start - 500);
+    const contextEnd = Math.min(content.length, end + 500);
+    const context = content.substring(contextStart, contextEnd);
+
+    setIsExpanding(true);
+    try {
+      const result = await expandContent(selectedText, context);
+      if (result.expandedContent) {
+        const beforeText = content.substring(0, start);
+        const afterText = content.substring(end);
+        setContent(`${beforeText}${result.expandedContent}${afterText}`);
+      }
+    } catch (error) {
+      console.error('Error expanding content:', error);
+    } finally {
+      setIsExpanding(false);
     }
   };
 
@@ -168,14 +209,9 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Article Title"
-            className="text-2xl font-bold p-2 w-full border-b border-gray-300 focus:outline-none focus:border-blue-500"
+            className="text-2xl font-bold p-2 w-full border-b border-gray-300 focus:outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-700"
+            disabled={article?.status === 'published'}
           />
-          <button
-            onClick={() => setShowPreview(!showPreview)}
-            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-          >
-            {showPreview ? 'Edit' : 'Preview'}
-          </button>
         </div>
 
         {!showPreview && (
@@ -185,25 +221,39 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
                 onClick={handleAIGenerate}
                 disabled={isLoading || !title}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                title="Generate an article based on the title. If you've added content, it will be preserved and used as context for additional content generation."
               >
                 {isLoading ? 'Generating...' : 'Generate with AI'}
               </button>
               <button
-                onClick={handleAISuggest}
-                disabled={isLoading || !content}
+                onClick={handleExpandContent}
+                disabled={isExpanding}
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                title="Select a section of text to expand it with more detailed information while maintaining the same style and format"
               >
-                Get AI Suggestions
+                {isExpanding ? 'Expanding...' : 'Expand Selection'}
               </button>
               <button
                 onClick={handleGenerateCategories}
                 disabled={isGeneratingCategories || !content || article?.categoriesLockedByAI}
                 className="px-4 py-2 bg-perplexity-primary text-white rounded hover:bg-perplexity-secondary disabled:opacity-50 flex items-center space-x-2"
+                title="Analyze the article content and generate appropriate categories based on the subject matter"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                 </svg>
                 <span>{isGeneratingCategories ? 'Analyzing Content...' : 'Generate Categories'}</span>
+              </button>
+              <button
+                onClick={() => setShowPreview(!showPreview)}
+                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 flex items-center space-x-2"
+                title="Toggle preview mode"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                </svg>
+                <span>{showPreview ? 'Edit' : 'Preview'}</span>
               </button>
             </div>
 
@@ -263,31 +313,108 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
               </div>
             )}
 
-            <div>
-              <h3 className="font-bold mb-2">Status</h3>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as Article['status'])}
-                className="w-full p-2 border rounded"
-              >
-                <option value="draft">Draft</option>
-                <option value="under_review">Under Review</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
+            {article?.status !== 'published' && (
+              <div>
+                <h3 className="font-bold mb-2">Status</h3>
+                {article?.status === 'submit_revision' || article?.status === 'under_review' ? (
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as Article['status'])}
+                    className="w-full p-2 border rounded"
+                  >
+                    <option value="submit_revision">Submit Revision</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="published">Published</option>
+                  </select>
+                ) : (
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as Article['status'])}
+                    className="w-full p-2 border rounded"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                )}
+              </div>
+            )}
           </>
         )}
 
         {error && <p className="text-red-500">{error}</p>}
 
+        {article?.status === 'published' && (
+          <div className="border-t pt-4">
+            <label htmlFor="editSummary" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Edit Summary
+            </label>
+            <input
+              id="editSummary"
+              type="text"
+              value={editSummary}
+              onChange={(e) => setEditSummary(e.target.value)}
+              placeholder="Briefly describe your changes..."
+              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        )}
+
         <div className="flex justify-end space-x-4">
-          <button
-            onClick={handleSave}
-            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Save
-          </button>
+          {article?.status === 'published' ? (
+            <>
+              <a
+                href={`/plexi/${article.slug}/history`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                History
+              </a>
+              <button
+                onClick={() => setShowPreview(true)}
+                className="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Preview Revision
+              </button>
+              <button
+                onClick={() => {
+                  setStatus('submit_revision');
+                  handleSave();
+                }}
+                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                disabled={!editSummary.trim()}
+                title={!editSummary.trim() ? 'Please provide an edit summary' : ''}
+              >
+                Submit Revision
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleSave}
+              className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Save
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Preview Mode */}
+      <div className={`space-y-4 ${!showPreview ? 'hidden' : ''}`}>
+        <div className="perplexipedia-card">
+          <article className="prose dark:prose-invert max-w-none">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-6">{title}</h1>
+            {infobox && renderInfoBox()}
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw]}
+              className="markdown-content"
+            >
+              {content}
+            </ReactMarkdown>
+          </article>
         </div>
       </div>
 
