@@ -7,16 +7,23 @@ Perplexipedia is an innovative platform that aims to create an unbiased, AI-enha
 The project has made significant progress in development. Currently implemented:
 - ✅ Core authentication system with Firebase
 - ✅ User dashboard with profile management
-- ✅ AI-powered article generation and fact-checking
-- ✅ Dark/light mode theming
+- ✅ Dual AI integration (OpenAI GPT-4 and Perplexity AI)
+- ✅ Dark/light mode theming with persistent settings
 - ✅ Responsive UI with TailwindCSS
-- ✅ Article management system
+- ✅ Article management system with version control
+- ✅ Infobox generation for articles
+- ✅ Automatic image sourcing from Openverse API
+- ✅ Table of contents generation
+- ✅ Article saving functionality
+- ✅ Font size customization
+- ✅ Content moderation and fact verification
 
 In progress:
 - 🚧 Community moderation features
-- 🚧 Article version control
 - 🚧 Collaborative editing system
 - 🚧 Advanced search functionality
+- 🚧 Citation management improvements
+- 🚧 Article categorization system
 
 ## 🎯 Project Goals
 
@@ -30,22 +37,29 @@ In progress:
 
 ### Implemented Features
 - **Advanced AI Integration**
-  - AI-assisted article generation with GPT-4
+  - Dual AI article generation (OpenAI GPT-4 and Perplexity AI)
+  - Content moderation with GPT-4
   - Automated fact-checking and source verification
-  - Content moderation and bias detection
   - Smart topic suggestions and categorization
+  - Automatic infobox generation
+  - Duplicate content detection
+  - Image sourcing from Openverse API
 
 - **User Management**
   - Secure authentication with Firebase
   - User profiles and dashboard
   - Activity tracking
   - Saved articles management
+  - Customizable appearance settings
 
 - **Article Management**
   - Article creation and editing
-  - Category and tag system
   - Version history tracking
   - Source verification system
+  - Dynamic table of contents
+  - Responsive article layout
+  - Print/PDF export functionality
+  - Content appropriateness checking
 
 ### Coming Soon
 - **Community Features**
@@ -65,7 +79,9 @@ In progress:
 - **Backend & Services**
   - Firebase Authentication
   - Firebase Firestore
-  - OpenAI GPT-4o API
+  - OpenAI GPT-4 API
+  - Perplexity AI API
+  - Openverse API for images
   - Firebase Security Rules
 
 - **Development Tools**
@@ -74,40 +90,6 @@ In progress:
   - TypeScript for type safety
   - PostCSS for CSS processing
 
-## 🚀 Getting Started
-
-1. Clone the repository
-```bash
-git clone [repository-url]
-cd perplexipedia
-```
-
-2. Install dependencies
-```bash
-npm install
-```
-
-3. Set up environment variables
-Create a `.env` file with the following:
-```
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
-VITE_OPENAI_API_KEY=your_openai_api_key
-```
-
-4. Start the development server
-```bash
-npm run dev
-```
-
-5. Build for production
-```bash
-npm run build
-```
 
 ## 🤝 Contributing
 

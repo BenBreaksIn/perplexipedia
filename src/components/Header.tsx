@@ -187,6 +187,18 @@ export const Header: React.FC = () => {
             >
               Random
             </button>
+            <button 
+              onClick={() => {
+                if (!currentUser) {
+                  navigate('/login', { state: { message: 'Please log in or sign up to start contributing.' } });
+                  return;
+                }
+                navigate('/dashboard/contributions');
+              }}
+              className="page-tab"
+            >
+              Contribute
+            </button>
           </div>
         </div>
       </div>
