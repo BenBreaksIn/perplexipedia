@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useAppearance } from '../../contexts/AppearanceContext';
 import { Sidebar } from '../Sidebar';
@@ -35,15 +35,19 @@ export const DashboardAdmin: React.FC = () => {
           </p>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="perplexipedia-card">
-              <h2 className="text-2xl font-linux-libertine mb-4 section-title">User Management</h2>
-              <p className="section-text">Manage user roles and permissions, review user activity, and handle user reports.</p>
-            </div>
+            <Link to="/admin/users" className="no-underline">
+              <div className="perplexipedia-card hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 cursor-pointer">
+                <h2 className="text-2xl font-linux-libertine mb-4 section-title">User Management</h2>
+                <p className="section-text">Manage user roles and permissions, review user activity, and handle user reports.</p>
+              </div>
+            </Link>
             
-            <div className="perplexipedia-card">
-              <h2 className="text-2xl font-linux-libertine mb-4 section-title">Content Moderation</h2>
-              <p className="section-text">Review and moderate articles, manage content flags, and oversee editorial guidelines.</p>
-            </div>
+            <Link to="/admin/content" className="no-underline">
+              <div className="perplexipedia-card hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 cursor-pointer">
+                <h2 className="text-2xl font-linux-libertine mb-4 section-title">Content Moderation</h2>
+                <p className="section-text">Review and moderate articles, manage content flags, and oversee editorial guidelines.</p>
+              </div>
+            </Link>
             
             <div className="perplexipedia-card">
               <h2 className="text-2xl font-linux-libertine mb-4 section-title">System Settings</h2>

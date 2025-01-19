@@ -26,10 +26,12 @@ export const ContentModeration: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [pendingRevisions, setPendingRevisions] = useState<PendingRevision[]>([]);
+  const [approvedRevisions, setApprovedRevisions] = useState<PendingRevision[]>([]);
   const [loadingRevisions, setLoadingRevisions] = useState(true);
   const [selectedRevision, setSelectedRevision] = useState<PendingRevision | null>(null);
   const [previewMode, setPreviewMode] = useState<'none' | 'original' | 'revised'>('none');
   const [originalArticle, setOriginalArticle] = useState<Article | null>(null);
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
 
   // Redirect non-admin users
   React.useEffect(() => {
@@ -38,51 +40,58 @@ export const ContentModeration: React.FC = () => {
     }
   }, [isAdmin, loading, navigate]);
 
-  // Load pending revisions
+  // Load revisions
   useEffect(() => {
-    const loadPendingRevisions = async () => {
+    const loadRevisions = async () => {
       try {
         // Get all articles with pending revisions
         const articlesQuery = query(
           collection(db, 'articles'),
-          where('status', '==', 'under_review')
+          where('status', 'in', ['under_review', 'published'])
         );
         const articlesSnapshot = await getDocs(articlesQuery);
         
-        const revisions: PendingRevision[] = [];
+        const pending: PendingRevision[] = [];
+        const approved: PendingRevision[] = [];
         
         for (const articleDoc of articlesSnapshot.docs) {
           const article = articleDoc.data() as Article;
           
-          // Get the pending revision for this article
+          // Get all revisions for this article
           const revisionsQuery = query(
             collection(db, 'articleVersions'),
-            where('articleId', '==', article.id),
-            where('status', '==', 'pending')
+            where('articleId', '==', article.id)
           );
           const revisionsSnapshot = await getDocs(revisionsQuery);
           
           revisionsSnapshot.forEach(revisionDoc => {
             const revision = revisionDoc.data();
-            revisions.push({
+            const revisionWithMeta = {
               ...revision,
               id: revisionDoc.id,
               articleTitle: article.title,
               timestamp: revision.timestamp.toDate()
-            } as PendingRevision);
+            } as PendingRevision;
+
+            if (revision.status === 'pending') {
+              pending.push(revisionWithMeta);
+            } else if (revision.status === 'approved') {
+              approved.push(revisionWithMeta);
+            }
           });
         }
         
-        setPendingRevisions(revisions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+        setPendingRevisions(pending.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+        setApprovedRevisions(approved.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
       } catch (error) {
-        console.error('Error loading pending revisions:', error);
+        console.error('Error loading revisions:', error);
       } finally {
         setLoadingRevisions(false);
       }
     };
 
     if (isAdmin && !loading) {
-      loadPendingRevisions();
+      loadRevisions();
     }
   }, [isAdmin, loading]);
 
@@ -199,6 +208,89 @@ export const ContentModeration: React.FC = () => {
     }
   };
 
+  const renderRevisionsList = (revisions: PendingRevision[]) => {
+    if (revisions.length === 0) {
+      return <p className="section-text">No {activeTab} revisions to display.</p>;
+    }
+
+    return (
+      <div className="space-y-4">
+        {revisions.map(revision => (
+          <div 
+            key={revision.id} 
+            className={`p-4 border rounded-lg cursor-pointer transition-colors duration-200 ${
+              selectedRevision?.id === revision.id 
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700'
+            }`}
+            onClick={() => handleRevisionClick(revision)}
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-medium">{revision.articleTitle}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Edited by {revision.author} • {new Date(revision.timestamp).toLocaleString()}
+                </p>
+              </div>
+              {selectedRevision?.id === revision.id && activeTab === 'pending' && (
+                <div className="flex space-x-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleApproveRevision(revision);
+                    }}
+                    className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRejectRevision(revision);
+                    }}
+                    className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
+            </div>
+            {selectedRevision?.id === revision.id && (
+              <>
+                <div className="mt-4">
+                  <h4 className="font-medium mb-2">Changes:</h4>
+                  <p className="text-sm whitespace-pre-wrap bg-gray-50 dark:bg-gray-800 p-4 rounded">
+                    {revision.changes}
+                  </p>
+                </div>
+                <div className="mt-4 flex space-x-4">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePreviewClick('original');
+                    }}
+                    className="px-4 py-2 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    View Original
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePreviewClick('revised');
+                    }}
+                    className="px-4 py-2 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Preview Changes
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   if (loading || loadingRevisions) {
     return (
       <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
@@ -228,90 +320,54 @@ export const ContentModeration: React.FC = () => {
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="perplexipedia-card lg:col-span-2">
-              <h2 className="text-2xl font-linux-libertine mb-4 section-title">Pending Revisions</h2>
-              {pendingRevisions.length === 0 ? (
-                <p className="section-text">No pending revisions to review.</p>
-              ) : (
-                <div className="space-y-4">
-                  {pendingRevisions.map(revision => (
-                    <div 
-                      key={revision.id} 
-                      className={`p-4 border rounded-lg cursor-pointer transition-colors duration-200 ${
-                        selectedRevision?.id === revision.id 
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                          : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700'
-                      }`}
-                      onClick={() => handleRevisionClick(revision)}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium">{revision.articleTitle}</h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Edited by {revision.author} • {new Date(revision.timestamp).toLocaleString()}
-                          </p>
-                        </div>
-                        {selectedRevision?.id === revision.id && (
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleApproveRevision(revision);
-                              }}
-                              className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRejectRevision(revision);
-                              }}
-                              className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      {selectedRevision?.id === revision.id && (
-                        <>
-                          <div className="mt-4">
-                            <h4 className="font-medium mb-2">Changes:</h4>
-                            <p className="text-sm whitespace-pre-wrap bg-gray-50 dark:bg-gray-800 p-4 rounded">
-                              {revision.changes}
-                            </p>
-                          </div>
-                          <div className="mt-4 flex space-x-4">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePreviewClick('original');
-                              }}
-                              className="px-4 py-2 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                            >
-                              View Original
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePreviewClick('revised');
-                              }}
-                              className="px-4 py-2 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                            >
-                              Preview Changes
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="flex space-x-4 mb-6">
+                <button
+                  onClick={() => setActiveTab('pending')}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    activeTab === 'pending'
+                      ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  Pending Revisions ({pendingRevisions.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('approved')}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    activeTab === 'approved'
+                      ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  Approved Revisions ({approvedRevisions.length})
+                </button>
+              </div>
+              
+              {renderRevisionsList(activeTab === 'pending' ? pendingRevisions : approvedRevisions)}
             </div>
             
             <div className="perplexipedia-card">
               <h2 className="text-2xl font-linux-libertine mb-4 section-title">Content Guidelines</h2>
-              <p className="section-text">Manage content guidelines, review editorial policies, and update moderation rules.</p>
+              <div className="space-y-4">
+                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <h3 className="font-medium mb-2">Core Principles</h3>
+                  <ul className="list-disc pl-5 space-y-2">
+                    <li>All content must maintain a neutral, unbiased perspective</li>
+                    <li>Content is allowed unless explicitly illegal or harmful</li>
+                    <li>Personal opinions should be clearly marked as such</li>
+                    <li>Factual accuracy and verifiability are essential</li>
+                  </ul>
+                </div>
+                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <h3 className="font-medium mb-2">Moderation Policy</h3>
+                  <ul className="list-disc pl-5 space-y-2">
+                    <li>Content is reviewed only for legality and basic guidelines compliance</li>
+                    <li>Different viewpoints are welcome as long as they're presented fairly</li>
+                    <li>Controversial topics should present multiple perspectives</li>
+                    <li>Citations and sources should be provided where applicable</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         </div>
