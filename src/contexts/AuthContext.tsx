@@ -10,7 +10,7 @@ import {
   UserCredential
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 interface AuthContextType {
@@ -21,6 +21,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
   updateUserProfile: (displayName: string, user?: User) => Promise<void>;
   loading: boolean;
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -36,6 +37,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const signup = async (email: string, password: string) => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
@@ -50,15 +52,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createdAt: new Date().toISOString(),
     });
     
+    setIsAdmin(false);
     return result;
   };
 
   const login = async (email: string, password: string) => {
-    return signInWithEmailAndPassword(auth, email, password);
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    
+    // Check admin status once at login
+    try {
+      const userSettingsRef = doc(db, 'user_settings', result.user.uid);
+      const userSettingsSnap = await getDoc(userSettingsRef);
+      
+      if (userSettingsSnap.exists()) {
+        const userData = userSettingsSnap.data();
+        setIsAdmin(userData.roles?.isAdmin === true);
+      } else {
+        setIsAdmin(false);
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      setIsAdmin(false);
+    }
+    
+    return result;
   };
 
-  const logout = () => {
-    return signOut(auth);
+  const logout = async () => {
+    await signOut(auth);
+    setIsAdmin(false);
   };
 
   const resetPassword = (email: string) => {
@@ -76,7 +98,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Check admin status when auth state changes (e.g., page refresh)
+        try {
+          const userSettingsRef = doc(db, 'user_settings', user.uid);
+          const userSettingsSnap = await getDoc(userSettingsRef);
+          
+          if (userSettingsSnap.exists()) {
+            const userData = userSettingsSnap.data();
+            setIsAdmin(userData.roles?.isAdmin === true);
+          } else {
+            setIsAdmin(false);
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
       setCurrentUser(user);
       setLoading(false);
     });
@@ -91,7 +132,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     resetPassword,
     updateUserProfile,
-    loading
+    loading,
+    isAdmin
   };
 
   return (
