@@ -6,6 +6,7 @@ import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from '
 import { db } from '../config/firebase';
 import { Article } from '../types/article';
 import { generateSlug, getArticleIdFromSlug } from '../utils/urlUtils';
+import { useAdmin } from '../hooks/useAdmin';
 
 interface SearchResult {
   id: string;
@@ -15,6 +16,7 @@ interface SearchResult {
 
 export const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
+  const { isAdmin } = useAdmin();
   const { isMenuOpen, setIsMenuOpen, fontSize, setFontSize, colorMode, setColorMode } = useAppearance();
   const navigate = useNavigate();
   const location = useLocation();
@@ -655,6 +657,14 @@ export const Header: React.FC = () => {
               View history
             </button>
             <div className="ml-auto flex">
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="page-tab"
+                >
+                  Admin
+                </button>
+              )}
               <button 
                 onClick={handleRandomClick}
                 className="page-tab"

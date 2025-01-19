@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppearance } from '../contexts/AppearanceContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAdmin } from '../hooks/useAdmin';
 
 interface TableOfContentsItem {
   level: number;
@@ -10,6 +11,8 @@ interface TableOfContentsItem {
 
 export const Sidebar: React.FC<{ content?: string }> = ({ content }) => {
   const { isMenuOpen, fontSize, setFontSize, colorMode, setColorMode } = useAppearance();
+  const { isAdmin } = useAdmin();
+  const navigate = useNavigate();
   const [showAppearance, setShowAppearance] = useState(true);
   const [showCopySuccess, setShowCopySuccess] = useState(false);
   const [tableOfContents, setTableOfContents] = useState<TableOfContentsItem[]>([]);
@@ -64,6 +67,27 @@ export const Sidebar: React.FC<{ content?: string }> = ({ content }) => {
                   {header.text}
                 </a>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Admin Tools Section (only show for admins) */}
+        {isAdmin && (
+          <div>
+            <h3 className="section-title">Admin Tools</h3>
+            <div className="space-y-1">
+              <button
+                onClick={() => navigate('/admin/users')}
+                className="nav-link block w-full text-left"
+              >
+                User Management
+              </button>
+              <button
+                onClick={() => navigate('/admin/content')}
+                className="nav-link block w-full text-left"
+              >
+                Content Moderation
+              </button>
             </div>
           </div>
         )}

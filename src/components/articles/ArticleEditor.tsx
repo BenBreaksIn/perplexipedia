@@ -314,30 +314,22 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
             )}
 
             {article?.status !== 'published' && (
-              <div>
-                <h3 className="font-bold mb-2">Status</h3>
-                {article?.status === 'submit_revision' || article?.status === 'under_review' ? (
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as Article['status'])}
-                    className="w-full p-2 border rounded"
-                  >
-                    <option value="submit_revision">Submit Revision</option>
-                    <option value="under_review">Under Review</option>
-                    <option value="published">Published</option>
-                  </select>
-                ) : (
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as Article['status'])}
-                    className="w-full p-2 border rounded"
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="under_review">Under Review</option>
-                    <option value="published">Published</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                )}
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={handleSave}
+                  className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Save Draft
+                </button>
+                <button
+                  onClick={() => {
+                    setStatus('under_review');
+                    handleSave();
+                  }}
+                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  Submit Article
+                </button>
               </div>
             )}
           </>
@@ -390,14 +382,7 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
                 Submit Revision
               </button>
             </>
-          ) : (
-            <button
-              onClick={handleSave}
-              className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              Save
-            </button>
-          )}
+          ) : null}
         </div>
       </div>
 
