@@ -1,8 +1,51 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { Article } from '../types/article';
+import { generateSlug } from '../utils/urlUtils';
 
 export const Footer: React.FC = () => {
+  const navigate = useNavigate();
+  
   const handlePrint = () => {
     window.print();
+  };
+
+  const getRandomArticle = async () => {
+    try {
+      // Query all published articles
+      const articlesRef = collection(db, 'articles');
+      const q = query(articlesRef, where('status', '==', 'published'));
+      const querySnapshot = await getDocs(q);
+      
+      // Convert to array and get random article
+      const articles = querySnapshot.docs.map(doc => ({ id: doc.id }));
+      if (articles.length === 0) return null;
+      
+      const randomIndex = Math.floor(Math.random() * articles.length);
+      return articles[randomIndex].id;
+    } catch (error) {
+      console.error('Error getting random article:', error);
+      return null;
+    }
+  };
+
+  const handleRandomClick = async () => {
+    const randomId = await getRandomArticle();
+    if (randomId) {
+      try {
+        const docRef = doc(db, 'articles', randomId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const article = docSnap.data() as Article;
+          navigate(`/plexi/${article.slug || generateSlug(article.title)}`);
+        }
+      } catch (error) {
+        console.error('Error loading random article:', error);
+      }
+    }
   };
 
   return (
@@ -28,8 +71,6 @@ export const Footer: React.FC = () => {
           <div>
             <h3 className="section-title mb-4">Tools</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="nav-link">What Links Here</a></li>
-              <li><a href="#" className="nav-link">Special Pages</a></li>
               <li>
                 <button
                   onClick={() => {
@@ -43,11 +84,6 @@ export const Footer: React.FC = () => {
                   Page Information
                 </button>
               </li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="section-title mb-4">Print/Export</h3>
-            <ul className="space-y-2">
               <li>
                 <button 
                   onClick={handlePrint} 
@@ -64,6 +100,22 @@ export const Footer: React.FC = () => {
                   Printable Version
                 </button>
               </li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="section-title mb-4">Read</h3>
+            <ul className="space-y-2">
+              <li><a href="#" className="nav-link">Featured Articles</a></li>
+              <li>
+                <button 
+                  onClick={handleRandomClick}
+                  className="nav-link w-full text-left"
+                >
+                  Random Article
+                </button>
+              </li>
+              <li><a href="#" className="nav-link">Categories</a></li>
+              <li><a href="#" className="nav-link">Recent Changes</a></li>
             </ul>
           </div>
         </div>
