@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Article } from '../../types/article';
@@ -27,6 +27,7 @@ export const ArticleView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [savingState, setSavingState] = useState<'idle' | 'saving'>('idle');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadArticle = async () => {
@@ -214,37 +215,61 @@ export const ArticleView: React.FC = () => {
           <article className="prose dark:prose-invert max-w-none">
             <div className="flex justify-between items-start mb-6">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-0 leading-tight">{article?.title}</h1>
-              {currentUser && (
-                <button
-                  onClick={handleSaveArticle}
-                  disabled={savingState === 'saving'}
-                  className={`p-3 rounded-full transition-colors duration-200 ${
-                    isSaved 
-                      ? 'text-perplexity-primary hover:bg-perplexity-primary/10' 
-                      : 'text-gray-400 hover:text-perplexity-primary hover:bg-gray-100 dark:hover:bg-gray-800'
-                  }`}
-                  title={isSaved ? 'Remove from saved articles' : 'Save article'}
-                >
-                  {savingState === 'saving' ? (
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-current"></div>
-                  ) : (
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      className="h-6 w-6" 
-                      fill={isSaved ? 'currentColor' : 'none'} 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
+              <div className="flex items-center space-x-2">
+                {currentUser && (
+                  <>
+                    <button
+                      onClick={() => navigate(`/plexi/${article.slug}/edit`)}
+                      className="p-3 rounded-full transition-colors duration-200 text-gray-400 hover:text-perplexity-primary hover:bg-gray-100 dark:hover:bg-gray-800"
+                      title="Edit article"
                     >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" 
-                      />
-                    </svg>
-                  )}
-                </button>
-              )}
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="h-6 w-6" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" 
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={handleSaveArticle}
+                      disabled={savingState === 'saving'}
+                      className={`p-3 rounded-full transition-colors duration-200 ${
+                        isSaved 
+                          ? 'text-perplexity-primary hover:bg-perplexity-primary/10' 
+                          : 'text-gray-400 hover:text-perplexity-primary hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                      title={isSaved ? 'Remove from saved articles' : 'Save article'}
+                    >
+                      {savingState === 'saving' ? (
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-current"></div>
+                      ) : (
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          className="h-6 w-6" 
+                          fill={isSaved ? 'currentColor' : 'none'} 
+                          viewBox="0 0 24 24" 
+                          stroke="currentColor"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" 
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
             <div className="flex items-center text-base text-gray-500 dark:text-gray-400 mb-8 space-x-4">
               <span>Last updated {formatDate(article.updatedAt)}</span>

@@ -26,48 +26,44 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
 
             try {
                 setLoading(true);
-                console.log('Loading article with:', { id, slug });
-                let articleId: string | undefined = id;
-
+                let articleId: string | undefined;
+                
                 if (slug) {
-                    console.log('Getting article ID from slug:', slug);
                     const foundId = await getArticleIdFromSlug(slug);
-                    console.log('Found article ID:', foundId);
-                    if (!foundId) {
-                        console.error('Article not found');
-                        return;
-                    }
-                    articleId = foundId;
+                    articleId = foundId || undefined;
+                } else if (id) {
+                    articleId = id;
                 }
 
                 if (!articleId) {
-                    console.log('No article ID found');
+                    console.error('Article not found');
+                    navigate('/');
                     return;
                 }
 
-                console.log('Fetching article with ID:', articleId);
                 const docRef = doc(db, 'articles', articleId);
                 const docSnap = await getDoc(docRef);
-                
+
                 if (docSnap.exists()) {
-                    const articleData = {
-                        id: docSnap.id,
-                        ...docSnap.data()
-                    } as Article;
-                    console.log('Article loaded:', articleData);
-                    setArticle(articleData);
+                    const articleData = docSnap.data() as Article;
+                    setArticle({
+                        ...articleData,
+                        id: docSnap.id
+                    });
                 } else {
-                    console.log('Article document not found');
+                    console.error('Article not found');
+                    navigate('/');
                 }
             } catch (error) {
                 console.error('Error loading article:', error);
+                navigate('/');
             } finally {
                 setLoading(false);
             }
         };
 
         loadArticle();
-    }, [id, slug, currentUser]);
+    }, [id, slug, currentUser, navigate]);
 
     const handleSave = async (articleData: Partial<Article>) => {
         if (!currentUser) return;

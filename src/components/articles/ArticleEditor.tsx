@@ -25,8 +25,9 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [images, setImages] = useState<ArticleImage[]>(article?.images || []);
   const [infobox, setInfobox] = useState<InfoBox | undefined>(article?.infobox);
-  const { generateArticle, suggestEdits, generateCategories, isLoading, error } = useAI();
+  const { generateArticle, suggestEdits, generateCategories, expandContent, isLoading, error } = useAI();
   const [isGeneratingCategories, setIsGeneratingCategories] = useState(false);
+  const [isExpanding, setIsExpanding] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Markdown toolbar handlers
@@ -86,20 +87,20 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     if (!title) return;
     const result = await generateArticle(title);
     if (result) {
-      // Remove the title and any empty lines at the start of the content
-      const contentLines = result.content?.split('\n') || [];
-      let startIndex = 0;
-      
-      // Skip the title line (# Title) and any empty lines after it
-      while (startIndex < contentLines.length && 
-        (contentLines[startIndex].trim().startsWith('# ') || 
-         contentLines[startIndex].trim() === '')) {
-        startIndex++;
+      // If there's existing content, use it as context for the generation
+      if (content.trim()) {
+        const combinedContent = result.content?.split('\n') || [];
+        // Remove any title line and empty lines at the start
+        while (combinedContent.length > 0 && 
+          (combinedContent[0].trim().startsWith('# ') || 
+           combinedContent[0].trim() === '')) {
+          combinedContent.shift();
+        }
+        setContent(content + '\n\n' + combinedContent.join('\n').trim());
+      } else {
+        setContent(result.content || '');
       }
       
-      const cleanContent = contentLines.slice(startIndex).join('\n').trim();
-      
-      setContent(cleanContent);
       setSelectedCategories(result.categories || []);
       setSelectedTags(result.tags || []);
       setImages(result.images || []);
@@ -125,6 +126,38 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     const suggestions = await suggestEdits(content);
     if (suggestions.improvedContent) {
       setContent(suggestions.improvedContent);
+    }
+  };
+
+  const handleExpandContent = async () => {
+    if (!textareaRef.current) return;
+    
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const selectedText = content.substring(start, end);
+    
+    if (!selectedText) {
+      alert('Please select the text you want to expand');
+      return;
+    }
+
+    // Get surrounding context (500 characters before and after)
+    const contextStart = Math.max(0, start - 500);
+    const contextEnd = Math.min(content.length, end + 500);
+    const context = content.substring(contextStart, contextEnd);
+
+    setIsExpanding(true);
+    try {
+      const result = await expandContent(selectedText, context);
+      if (result.expandedContent) {
+        const beforeText = content.substring(0, start);
+        const afterText = content.substring(end);
+        setContent(`${beforeText}${result.expandedContent}${afterText}`);
+      }
+    } catch (error) {
+      console.error('Error expanding content:', error);
+    } finally {
+      setIsExpanding(false);
     }
   };
 
@@ -185,13 +218,23 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
                 onClick={handleAIGenerate}
                 disabled={isLoading || !title}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                title="Generate an article based on the title. If you've added content, it will be preserved and used as context for additional content generation."
               >
                 {isLoading ? 'Generating...' : 'Generate with AI'}
+              </button>
+              <button
+                onClick={handleExpandContent}
+                disabled={isExpanding}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                title="Select a section of text to expand it with more detailed information while maintaining the same style and format"
+              >
+                {isExpanding ? 'Expanding...' : 'Expand Selection'}
               </button>
               <button
                 onClick={handleAISuggest}
                 disabled={isLoading || !content}
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                title="Get AI suggestions to improve the entire article's content, including grammar, clarity, and structure"
               >
                 Get AI Suggestions
               </button>
@@ -199,6 +242,7 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
                 onClick={handleGenerateCategories}
                 disabled={isGeneratingCategories || !content || article?.categoriesLockedByAI}
                 className="px-4 py-2 bg-perplexity-primary text-white rounded hover:bg-perplexity-secondary disabled:opacity-50 flex items-center space-x-2"
+                title="Analyze the article content and generate appropriate categories based on the subject matter"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />

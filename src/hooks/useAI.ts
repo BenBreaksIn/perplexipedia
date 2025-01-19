@@ -17,6 +17,7 @@ export interface UseAIResult {
   ) => Promise<Array<Partial<Article>>>;
   suggestEdits: (content: string) => Promise<{ suggestions: string[]; improvedContent?: string }>;
   generateCategories: (content: string) => Promise<Array<{ id: string; name: string }>>;
+  expandContent: (selectedContent: string, context: string) => Promise<{ expandedContent: string }>;
   isLoading: boolean;
   error: string | null;
   provider: AIProvider;
@@ -157,11 +158,31 @@ export const useAI = (): UseAIResult => {
     }
   };
 
+  const expandContent = async (selectedContent: string, context: string): Promise<{ expandedContent: string }> => {
+    if (!aiService) {
+      setError('AI service not initialized');
+      return { expandedContent: selectedContent };
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      return await aiService.expandContent(selectedContent, context);
+    } catch (error) {
+      console.error('Error expanding content:', error);
+      setError('Failed to expand content');
+      return { expandedContent: selectedContent };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     generateArticle,
     generateArticles,
     suggestEdits,
     generateCategories,
+    expandContent,
     isLoading,
     error,
     provider
