@@ -4,6 +4,7 @@ import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firesto
 import { db } from '../config/firebase';
 import { Article } from '../types/article';
 import { generateSlug } from '../utils/urlUtils';
+import { getAuth } from 'firebase/auth';
 
 interface FooterSectionProps {
   title: string;
@@ -44,6 +45,7 @@ const FooterSection: React.FC<FooterSectionProps> = ({ title, isOpen, onToggle, 
 export const Footer: React.FC = () => {
   const navigate = useNavigate();
   const [openSection, setOpenSection] = useState<string | null>(null);
+  const auth = getAuth();
   
   const handlePrint = () => {
     window.print();
@@ -85,6 +87,14 @@ export const Footer: React.FC = () => {
     }
   };
 
+  const handleAuthNavigation = () => {
+    if (auth.currentUser) {
+      navigate('/dashboard');
+    } else {
+      navigate('/login');
+    }
+  };
+
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? null : section);
   };
@@ -100,8 +110,8 @@ export const Footer: React.FC = () => {
           >
             <ul className="text-center md:text-left">
               <li><a href="#" className="nav-link block py-2">About</a></li>
-              <li><a href="#" className="nav-link block py-2">Community Portal</a></li>
-              <li><a href="#" className="nav-link block py-2">Statistics</a></li>
+              <li><a href="#" className="nav-link block py-2">Terms of Use</a></li>
+              <li><a href="#" className="nav-link block py-2">Privacy Policy</a></li>
             </ul>
           </FooterSection>
 
@@ -111,9 +121,13 @@ export const Footer: React.FC = () => {
             onToggle={() => toggleSection('contribute')}
           >
             <ul className="text-center md:text-left">
-              <li><a href="#" className="nav-link block py-2">Help</a></li>
+              <li>
+                <button onClick={handleAuthNavigation} className="nav-link w-full text-center md:text-left block py-2">
+                  {auth.currentUser ? 'Dashboard' : 'Sign Up'}
+                </button>
+              </li>
+              <li><a href="#" className="nav-link block py-2">Statistics</a></li>
               <li><a href="#" className="nav-link block py-2">Learn to Edit</a></li>
-              <li><a href="#" className="nav-link block py-2">Community Portal</a></li>
             </ul>
           </FooterSection>
 
@@ -171,8 +185,7 @@ export const Footer: React.FC = () => {
                 </button>
               </li>
               <li><a href="#" className="nav-link block py-2">Categories</a></li>
-              <li><a href="#" className="nav-link block py-2">Recent Changes</a></li>
-            </ul>
+              </ul>
           </FooterSection>
         </div>
 
