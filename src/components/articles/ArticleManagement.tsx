@@ -227,23 +227,12 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
                     <div className="space-x-4">
                         <button
                             onClick={() => setView('edit')}
-                            className={`px-4 py-2 rounded ${
-                                view === 'edit'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-200 text-gray-700'
-                            }`}
+                            className={`p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors`}
+                            title="Edit"
                         >
-                            Edit
-                        </button>
-                        <button
-                            onClick={() => setView('history')}
-                            className={`px-4 py-2 rounded ${
-                                view === 'history'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-200 text-gray-700'
-                            }`}
-                        >
-                            History
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
                         </button>
                     </div>
                 )}

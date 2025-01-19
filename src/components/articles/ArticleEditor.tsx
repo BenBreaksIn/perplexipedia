@@ -25,7 +25,7 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [images, setImages] = useState<ArticleImage[]>(article?.images || []);
   const [infobox, setInfobox] = useState<InfoBox | undefined>(article?.infobox);
-  const { generateArticle, suggestEdits, generateCategories, expandContent, isLoading, error } = useAI();
+  const { generateArticle, generateCategories, expandContent, isLoading, error } = useAI();
   const [isGeneratingCategories, setIsGeneratingCategories] = useState(false);
   const [isExpanding, setIsExpanding] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -137,14 +137,6 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     }
   };
 
-  const handleAISuggest = async () => {
-    if (!content) return;
-    const suggestions = await suggestEdits(content);
-    if (suggestions.improvedContent) {
-      setContent(suggestions.improvedContent);
-    }
-  };
-
   const handleExpandContent = async () => {
     if (!textareaRef.current) return;
     
@@ -240,14 +232,6 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
                 title="Select a section of text to expand it with more detailed information while maintaining the same style and format"
               >
                 {isExpanding ? 'Expanding...' : 'Expand Selection'}
-              </button>
-              <button
-                onClick={handleAISuggest}
-                disabled={isLoading || !content}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                title="Get AI suggestions to improve the entire article's content, including grammar, clarity, and structure"
-              >
-                Get AI Suggestions
               </button>
               <button
                 onClick={handleGenerateCategories}
