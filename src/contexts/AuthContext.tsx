@@ -10,6 +10,8 @@ import {
   UserCredential
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -37,7 +39,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (email: string, password: string) => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
-    // You can add additional user setup here (e.g., creating a user profile in Firestore)
+    
+    // Create the user settings document in Firestore
+    const userSettingsRef = doc(db, 'user_settings', result.user.uid);
+    await setDoc(userSettingsRef, {
+      id: result.user.uid,
+      displayName: result.user.displayName || '',
+      email: result.user.email,
+      roles: { isAdmin: false, isModerator: false },
+      createdAt: new Date().toISOString(),
+    });
+    
     return result;
   };
 
@@ -57,6 +69,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const targetUser = user || currentUser;
     if (!targetUser) throw new Error('No user logged in');
     await updateProfile(targetUser, { displayName });
+    
+    // Update displayName in user settings document
+    const userSettingsRef = doc(db, 'user_settings', targetUser.uid);
+    await setDoc(userSettingsRef, { displayName }, { merge: true });
   };
 
   useEffect(() => {
