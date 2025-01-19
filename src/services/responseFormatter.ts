@@ -42,9 +42,11 @@ export const formatPerplexityResponse = (response: any, citations: Array<{ id: n
       return section
         .replace(/##\s+([^\n]+)/g, '\n## $1\n')
         .replace(/###\s+([^\n]+)/g, '\n### $1\n')
-        // Fix bullet point formatting
-        .replace(/^-\s*([^\n]+)/gm, '- $1')  // Fix bullet points with single space
-        .replace(/^\*\s*([^\n]+)/gm, '* $1')  // Fix asterisk bullet points
+        // Fix bullet point formatting - ensure text is on same line as bullet
+        .replace(/^-\s*\n+([^\n]+)/gm, '- $1')  // Fix bullet points where text is on next line
+        .replace(/^-\s*([^\n]+)/gm, '- $1')     // Fix bullet points with single space
+        .replace(/^\*\s*\n+([^\n]+)/gm, '* $1') // Fix asterisk bullets where text is on next line
+        .replace(/^\*\s*([^\n]+)/gm, '* $1')    // Fix asterisk bullet points
         .trim();
     });
 

@@ -200,37 +200,46 @@ export class PerplexityAIService implements IAIService {
                  - "Tiger (animal)" (when disambiguation is needed)
             
             Content Format Requirements:
-            1. Start with a concise introduction (no heading)
-            2. Use markdown for formatting:
+            1. Start with a concise introduction (2-3 paragraphs, no heading)
+               - First paragraph defines the topic and its significance
+               - Following paragraphs provide overview and context
+            
+            2. Main Content Structure:
+               - Use proper paragraphs for all main content
+               - Each paragraph should be 3-5 sentences
+               - Paragraphs should flow logically and be well-connected
+               - Only use bullet points for lists of specific items or steps
+               - AVOID using bullet points for main content
+            
+            3. Section Format:
                - Use ## for main section headings
                - Use ### for subsection headings
-               - Use regular text for content
-               - Use [1], [2], etc. for inline citations
-               - Use "- " for bullet points (with a single space after the dash)
-               - NO bold text or excessive formatting
-            3. Structure:
-               - Introduction (no heading)
-               - Main sections with ## heading
-               - Subsections with ### heading if needed
-               - Lists should be properly formatted with single space after bullet
-               - DO NOT include a References section (it will be added automatically)
-            4. Word count: ${minWordCount}-${maxWordCount} words
-            5. Style:
+               - Each section should have at least 2-3 paragraphs
+               - Maintain proper paragraph flow within sections
+               - Use transitions between paragraphs and sections
+            
+            4. Writing Style:
                - Academic and neutral tone
                - Clear and concise language
-               - Use inline citations [1], [2], etc. frequently to support claims
-               - No excessive formatting or special characters
-               - Use proper spacing between sections (one blank line)
-               - Ensure lists are properly aligned with single space after bullet
-            6. Citations:
-               - Use square brackets for citations: [1], [2], etc.
-               - Citations should be placed after relevant statements
+               - Use proper paragraph structure
+               - Support claims with citations [1]
+               - Avoid lists or bullet points except for specific enumerations
+               - Write in full, well-structured paragraphs
+            
+            5. Citations:
+               - Use inline citations [1], [2], etc.
+               - Place citations after relevant statements
                - Multiple citations can be used together [1][2]
-               - DO NOT create your own references section`
+               - DO NOT create a References section
+            
+            6. Word count: ${minWordCount}-${maxWordCount} words
+
+            Remember: This is an encyclopedia article, not a list or outline.
+            Focus on well-written, flowing paragraphs that explain the topic thoroughly.`
           },
           {
             role: "user",
-            content: `Write an encyclopedia article about: ${topic}. Remember to use a Wikipedia-style title format.`
+            content: `Write an encyclopedia article about: ${topic}. Remember to use a Wikipedia-style title format and proper paragraph structure.`
           }
         ]
       );
