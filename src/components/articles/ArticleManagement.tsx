@@ -3,10 +3,11 @@ import { Article } from '../../types/article';
 import { ArticleEditor } from './ArticleEditor';
 import { ArticleManagementHistory } from './ArticleManagementHistory';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, setDoc, query, collection, getDocs, where, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, setDoc, query, collection, getDocs, where, orderBy, limit, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { generateSlug, getArticleIdFromSlug } from '../../utils/urlUtils';
+import { useAdmin } from '../../hooks/useAdmin';
 
 interface ArticleManagementProps {
     article?: Article;
@@ -16,6 +17,7 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
     const { id, slug } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    const { isAdmin } = useAdmin();
     const [article, setArticle] = useState<Article | undefined>(initialArticle);
     const [view, setView] = useState<'edit' | 'history'>('edit');
     const [loading, setLoading] = useState(!!id || !!slug);
@@ -89,8 +91,33 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
                 );
                 const versionsSnapshot = await getDocs(versionsQuery);
                 const latestVersion = versionsSnapshot.empty ? 0 : versionsSnapshot.docs[0].data().version;
-                
-                // Save the new version to articleVersions collection
+
+                // For non-admin users, create a pending revision
+                if (!isAdmin) {
+                    // Save the new version to articleVersions collection as pending
+                    await setDoc(doc(db, 'articleVersions', versionId), {
+                        id: versionId,
+                        articleId: article.id,
+                        version: latestVersion + 1,
+                        content: articleData.content!,
+                        title: articleData.title || article.title,
+                        author: currentUser.displayName || currentUser.email || 'unknown',
+                        authorId: currentUser.uid,
+                        timestamp: timestamp,
+                        changes: 'Updated article',
+                        status: 'pending'
+                    });
+
+                    // Update article status to under review
+                    await updateDoc(doc(db, 'articles', article.id), {
+                        status: 'under_review'
+                    });
+
+                    navigate('/dashboard/contributions');
+                    return;
+                }
+
+                // For admin users, update directly
                 await setDoc(doc(db, 'articleVersions', versionId), {
                     id: versionId,
                     articleId: article.id,
@@ -100,7 +127,8 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
                     author: currentUser.displayName || currentUser.email || 'unknown',
                     authorId: currentUser.uid,
                     timestamp: timestamp,
-                    changes: 'Updated article'
+                    changes: 'Updated article',
+                    status: 'approved'
                 });
 
                 const updatedArticle: Article = {
@@ -115,7 +143,7 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
                 setArticle(updatedArticle);
                 
                 if (updatedArticle.status === 'published') {
-                    navigate(`/plexi/${updatedArticle.slug}`);
+                    navigate('/dashboard/contributions');
                 }
             } else {
                 // Create new article
@@ -127,7 +155,7 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
                     id: articleId,
                     title: articleData.title!,
                     content: articleData.content!,
-                    status: articleData.status!,
+                    status: isAdmin ? articleData.status! : 'under_review',
                     author: currentUser.displayName || currentUser.email || 'unknown',
                     authorId: currentUser.uid,
                     createdAt: timestamp,
@@ -150,13 +178,14 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
                     author: currentUser.displayName || currentUser.email || 'unknown',
                     authorId: currentUser.uid,
                     timestamp: timestamp,
-                    changes: 'Initial version'
+                    changes: 'Initial version',
+                    status: isAdmin ? 'approved' : 'pending'
                 });
 
                 setArticle(newArticle);
                 
                 if (newArticle.status === 'published') {
-                    navigate(`/plexi/${newArticle.slug}`);
+                    navigate('/dashboard/contributions');
                 }
             }
         } catch (error) {

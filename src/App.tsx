@@ -9,6 +9,7 @@ import { Signup } from './components/auth/Signup'
 import { Dashboard } from './components/dashboard/Dashboard'
 import { DashboardAdmin } from './components/dashboard/DashboardAdmin'
 import { UserManagement } from './components/admin/UserManagement'
+import { ContentModeration } from './components/admin/ContentModeration'
 import { ArticleView } from './components/articles/ArticleView'
 import { ArticleSource } from './components/articles/ArticleSource'
 import { ArticleHistory } from './components/articles/ArticleHistory'
@@ -32,6 +33,7 @@ function AppContent() {
           <Route path="/dashboard/*" element={<Dashboard />} />
           <Route path="/admin" element={<DashboardAdmin />} />
           <Route path="/admin/users" element={<UserManagement />} />
+          <Route path="/admin/content" element={<ContentModeration />} />
           <Route path="/plexi/:slug" element={<ArticleView />} />
           <Route path="/plexi/:slug/source" element={<ArticleSource />} />
           <Route path="/plexi/:slug/history" element={<ArticleHistory />} />

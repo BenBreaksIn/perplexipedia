@@ -82,6 +82,12 @@ export const Sidebar: React.FC<{ content?: string }> = ({ content }) => {
               >
                 User Management
               </button>
+              <button
+                onClick={() => navigate('/admin/content')}
+                className="nav-link block w-full text-left"
+              >
+                Content Moderation
+              </button>
             </div>
           </div>
         )}
