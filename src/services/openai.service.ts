@@ -3,14 +3,132 @@ import { Article } from '../types/article';
 import { getAuth } from 'firebase/auth';
 import { AIServiceConfig, IAIService } from './ai';
 
+interface OpenverseImage {
+  id: string;
+  title: string;
+  url: string;
+  creator: string;
+  creator_url: string;
+  license: string;
+  license_version: string;
+  license_url: string;
+  attribution: string;
+}
+
+interface OpenverseAuthResponse {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+}
+
 export class OpenAIService implements IAIService {
   private openai: OpenAI;
+  private openverseToken: string | null = null;
+  private openverseTokenExpiry: number | null = null;
 
   constructor(config: AIServiceConfig) {
     this.openai = new OpenAI({
       apiKey: config.apiKey,
       dangerouslyAllowBrowser: true // Note: In production, use a backend proxy
     });
+  }
+
+  private async getOpenverseToken(): Promise<string> {
+    // Check if we have a valid token
+    if (this.openverseToken && this.openverseTokenExpiry && Date.now() < this.openverseTokenExpiry) {
+      return this.openverseToken;
+    }
+
+    const clientId = import.meta.env.VITE_OPENVERSE_CLIENT_ID;
+    const clientSecret = import.meta.env.VITE_OPENVERSE_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new Error('Openverse credentials not found in environment variables');
+    }
+
+    const response = await fetch('https://api.openverse.org/v1/auth_tokens/token/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'client_credentials',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get Openverse token: ${response.statusText}`);
+    }
+
+    const data: OpenverseAuthResponse = await response.json();
+    this.openverseToken = data.access_token;
+    this.openverseTokenExpiry = Date.now() + (data.expires_in * 1000);
+
+    return this.openverseToken;
+  }
+
+  private async fetchOpenverseImages(query: string, maxImages: number = 5): Promise<OpenverseImage[]> {
+    try {
+      const token = await this.getOpenverseToken();
+      
+      // Clean up the query to extract just the topic
+      const cleanQuery = query.replace(/Generate \d+ articles? about /i, '')
+                             .replace(/with length between \d+ and \d+ words each/i, '')
+                             .trim();
+      
+      // Keep only essential search parameters
+      const searchParams = new URLSearchParams({
+        q: cleanQuery,
+        page_size: maxImages.toString(),
+        mature: 'false'
+      });
+      
+      const url = `https://api.openverse.org/v1/images/?${searchParams.toString()}`;
+      console.log('Fetching images for topic:', cleanQuery);
+      console.log('Openverse API URL:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Openverse API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`Failed to fetch images: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Openverse API response:', data);
+
+      if (!data.results || !Array.isArray(data.results)) {
+        console.error('Invalid response format from Openverse API:', data);
+        return [];
+      }
+
+      return data.results.map((img: any) => ({
+        id: img.id,
+        title: img.title || 'Untitled Image',
+        url: img.url,
+        creator: img.creator || 'Unknown Creator',
+        creator_url: img.creator_url || '',
+        license: img.license || '',
+        license_version: img.license_version || '',
+        license_url: img.license_url || '',
+        attribution: img.attribution || `Image by ${img.creator || 'Unknown Creator'}`
+      }));
+    } catch (error) {
+      console.error('Error fetching Openverse images:', error);
+      return [];
+    }
   }
 
   private async searchSources(topic: string): Promise<string[]> {
@@ -137,51 +255,6 @@ export class OpenAIService implements IAIService {
     }
   }
 
-  private async searchImages(topic: string): Promise<Array<{ url: string, attribution: string, description: string }>> {
-    try {
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: `You are an image research assistant. Search for relevant, free-to-use images from:
-            1. Wikimedia Commons
-            2. Unsplash
-            3. Pexels
-            4. Creative Commons sources
-            
-            Return ONLY a JSON object in this format:
-            {
-              "images": [{
-                "url": "direct image url",
-                "attribution": "credit and license info",
-                "description": "brief description for alt text"
-              }]
-            }`
-          },
-          {
-            role: "user",
-            content: `Find relevant free images for an article about: ${topic}`
-          }
-        ],
-        temperature: 0.3,
-        response_format: { type: "json_object" }
-      });
-
-      try {
-        const content = response.choices[0].message.content || '{"images": []}';
-        const parsed = JSON.parse(content);
-        return Array.isArray(parsed.images) ? parsed.images : [];
-      } catch (parseError) {
-        console.error('Error parsing images JSON:', parseError);
-        return [];
-      }
-    } catch (error) {
-      console.error('Error searching images:', error);
-      return [];
-    }
-  }
-
   private async checkForDuplicates(title: string, content: string, existingArticles: Article[]): Promise<{
     isDuplicate: boolean;
     similarArticles: Array<{id: string; title: string; similarity: number}>;
@@ -278,8 +351,17 @@ export class OpenAIService implements IAIService {
         return null;
       }
 
-      // 3. Search for relevant images
-      const images = await this.searchImages(topic);
+      // 3. Search for relevant images using Openverse
+      const images = await this.fetchOpenverseImages(topic);
+      console.log('Fetched Openverse images:', images);
+
+      // Format images for the article
+      const formattedImages = images.map((img, index) => ({
+        url: img.url,
+        description: img.title,
+        attribution: img.attribution,
+        index
+      }));
 
       // 4. Generate the article with integrated fact verification and images
       const response = await this.openai.chat.completions.create({
@@ -410,7 +492,7 @@ Do not include any other text or formatting.`
           author: currentUser.displayName || currentUser.email || 'Anonymous',
           categories: categories.map((name: string) => ({ id: crypto.randomUUID(), name })),
           tags: tags.map((name: string) => ({ id: crypto.randomUUID(), name })),
-          images,
+          images: formattedImages,
           infobox: articleData.infobox,
           isAIGenerated: true,
           categoriesLockedByAI: true,
