@@ -24,7 +24,7 @@ export const Sidebar: React.FC<{ content?: string }> = ({ content }) => {
 
       while ((match = headerRegex.exec(content)) !== null) {
         const level = match[1].length;
-        const text = match[2];
+        const text = match[2].trim().replace(/^#+\s*/, ''); // Remove any remaining # symbols
         const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
         headers.push({ level, text, id });
       }

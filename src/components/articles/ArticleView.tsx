@@ -246,15 +246,15 @@ export const ArticleView: React.FC = () => {
                 components={{
                   h1: ({node, ...props}) => {
                     const id = props.children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                    return <h1 id={id} className="text-4xl font-bold mt-8 mb-4" {...props} />;
+                    return <h1 id={id} className="text-4xl font-bold mt-8 mb-4 scroll-mt-20" {...props} />;
                   },
                   h2: ({node, ...props}) => {
                     const id = props.children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                    return <h2 id={id} className="text-3xl font-bold mt-6 mb-3" {...props} />;
+                    return <h2 id={id} className="text-3xl font-bold mt-6 mb-3 scroll-mt-20" {...props} />;
                   },
                   h3: ({node, ...props}) => {
                     const id = props.children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                    return <h3 id={id} className="text-2xl font-bold mt-5 mb-2" {...props} />;
+                    return <h3 id={id} className="text-2xl font-bold mt-5 mb-2 scroll-mt-20" {...props} />;
                   },
                   p: ({node, children, ...props}) => {
                     // Check if the paragraph only contains an image
