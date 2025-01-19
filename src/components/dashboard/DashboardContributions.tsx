@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Article, ArticleStatus } from '../../types/article';
+import { generateSlug } from '../../utils/urlUtils';
 
 interface AutoPilotConfig {
   numberOfArticles: number;
@@ -126,7 +127,8 @@ export const DashboardContributions = () => {
             ...articleWithAuthor,
             id: articleId,
             createdAt: new Date(),
-            updatedAt: new Date()
+            updatedAt: new Date(),
+            slug: generateSlug(article.title || 'untitled')
           });
         }
         setProgress(((i + 1) / total) * 100);
@@ -497,7 +499,7 @@ export const DashboardContributions = () => {
                 <h3 className="text-lg font-medium">
                   {article.status === 'published' ? (
                     <a 
-                      href={`/articles/${article.id}`}
+                      href={`/plexi/${article.slug || generateSlug(article.title)}`}
                       className="hover:text-perplexity-primary"
                     >
                       {article.title}
@@ -527,7 +529,7 @@ export const DashboardContributions = () => {
             </div>
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => navigate(`/dashboard/articles/${article.id}/edit`)}
+                onClick={() => navigate(`/dashboard/plexi/${article.slug || generateSlug(article.title)}/edit`)}
                 className="btn-secondary text-sm flex items-center space-x-1"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -603,7 +605,7 @@ export const DashboardContributions = () => {
           </div>
           <div className="flex space-x-4">
             <button
-              onClick={() => navigate('/dashboard/articles/new')}
+              onClick={() => navigate('/dashboard/plexi/new')}
               className="btn-primary"
             >
               New Article

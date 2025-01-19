@@ -35,7 +35,7 @@ export const Footer: React.FC = () => {
                   onClick={() => {
                     const articleId = window.location.pathname.split('/')[2];
                     if (articleId) {
-                      window.location.href = `/articles/${articleId}/info`;
+                      window.location.href = `/plexi/${articleId}/info`;
                     }
                   }}
                   className="nav-link w-full text-left"

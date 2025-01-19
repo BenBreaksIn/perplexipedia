@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppearance } from '../contexts/AppearanceContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { Article } from '../types/article';
+import { generateSlug, getArticleIdFromSlug } from '../utils/urlUtils';
 
 interface SearchResult {
   id: string;
@@ -21,6 +23,7 @@ export const Header: React.FC = () => {
   const [showResults, setShowResults] = useState(false);
   const desktopSearchRef = useRef<HTMLDivElement>(null);
   const mobileSearchRef = useRef<HTMLDivElement>(null);
+  const [article, setArticle] = useState<Article | null>(null);
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -96,10 +99,20 @@ export const Header: React.FC = () => {
     return () => clearTimeout(debounceTimeout);
   }, [searchQuery]);
 
-  const handleSearchSelect = (articleId: string) => {
-    setShowResults(false);
-    setSearchQuery('');
-    navigate(`/articles/${articleId}`, { replace: true });
+  const handleSearchSelect = async (articleId: string) => {
+    try {
+      const docRef = doc(db, 'articles', articleId);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const article = docSnap.data() as Article;
+        setShowResults(false);
+        setSearchQuery('');
+        navigate(`/plexi/${article.slug || generateSlug(article.title)}`, { replace: true });
+      }
+    } catch (error) {
+      console.error('Error loading article:', error);
+    }
   };
 
   const handleLogout = async () => {
@@ -133,7 +146,17 @@ export const Header: React.FC = () => {
   const handleRandomClick = async () => {
     const randomId = await getRandomArticle();
     if (randomId) {
-      navigate(`/articles/${randomId}`);
+      try {
+        const docRef = doc(db, 'articles', randomId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const article = docSnap.data() as Article;
+          navigate(`/plexi/${article.slug || generateSlug(article.title)}`);
+        }
+      } catch (error) {
+        console.error('Error loading random article:', error);
+      }
     }
   };
 
@@ -141,24 +164,53 @@ export const Header: React.FC = () => {
     const path = location.pathname;
     if (path.includes('/source')) return 'source';
     if (path.includes('/history')) return 'history';
+    if (path.includes('/info')) return 'info';
     return 'read';
   };
 
   const currentTab = getTabPath();
-  const articleId = location.pathname.split('/')[2]; // Get article ID from URL
+  const slug = location.pathname.split('/')[2]; // Get slug from URL
+
+  useEffect(() => {
+    const loadArticle = async () => {
+      if (!slug) return;
+
+      try {
+        const articleId = await getArticleIdFromSlug(slug);
+        if (!articleId) return;
+
+        const docRef = doc(db, 'articles', articleId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          setArticle({
+            ...docSnap.data() as Article,
+            id: docSnap.id
+          });
+        }
+      } catch (error) {
+        console.error('Error loading article:', error);
+      }
+    };
+
+    loadArticle();
+  }, [slug]);
 
   const handleTabClick = (tab: string) => {
-    if (!articleId) return;
+    if (!article) return;
     
     switch (tab) {
       case 'read':
-        navigate(`/articles/${articleId}`);
+        navigate(`/plexi/${article.slug || generateSlug(article.title)}`);
         break;
       case 'source':
-        navigate(`/articles/${articleId}/source`);
+        navigate(`/plexi/${article.slug || generateSlug(article.title)}/source`);
         break;
       case 'history':
-        navigate(`/articles/${articleId}/history`);
+        navigate(`/plexi/${article.slug || generateSlug(article.title)}/history`);
+        break;
+      case 'info':
+        navigate(`/plexi/${article.slug || generateSlug(article.title)}/info`);
         break;
     }
   };

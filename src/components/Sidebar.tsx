@@ -44,7 +44,7 @@ export const Sidebar: React.FC<{ content?: string }> = ({ content }) => {
     }
   };
 
-  const isArticlePage = location.pathname.startsWith('/articles/') && !location.pathname.includes('/edit');
+  const isArticlePage = location.pathname.startsWith('/plexi/') && !location.pathname.includes('/edit');
 
   return (
     <aside className={`${isMenuOpen ? 'md:block' : 'md:hidden'} hidden w-64 pr-8 transition-all duration-300 ease-in-out`}>
@@ -91,7 +91,7 @@ export const Sidebar: React.FC<{ content?: string }> = ({ content }) => {
               onClick={() => {
                 const articleId = location.pathname.split('/')[2];
                 if (articleId) {
-                  window.location.href = `/articles/${articleId}/info`;
+                  window.location.href = `/plexi/${articleId}/info`;
                 }
               }}
               className="nav-link block w-full text-left"

@@ -27,10 +27,10 @@ function AppContent() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/dashboard/*" element={<Dashboard />} />
-          <Route path="/articles/:id" element={<ArticleView />} />
-          <Route path="/articles/:id/source" element={<ArticleSource />} />
-          <Route path="/articles/:id/history" element={<ArticleHistory />} />
-          <Route path="/articles/:id/info" element={<ArticleInformation />} />
+          <Route path="/plexi/:slug" element={<ArticleView />} />
+          <Route path="/plexi/:slug/source" element={<ArticleSource />} />
+          <Route path="/plexi/:slug/history" element={<ArticleHistory />} />
+          <Route path="/plexi/:slug/info" element={<ArticleInformation />} />
           <Route path="/" element={
             <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
               <Sidebar />

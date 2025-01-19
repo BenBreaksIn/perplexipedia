@@ -4,19 +4,27 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Article } from '../../types/article';
 import { Sidebar } from '../Sidebar';
+import { getArticleIdFromSlug } from '../../utils/urlUtils';
 
 export const ArticleSource: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchArticle = async () => {
-      if (!id) return;
+      if (!slug) return;
       
       try {
-        const articleDoc = await getDoc(doc(db, 'articles', id));
+        const articleId = await getArticleIdFromSlug(slug);
+        
+        if (!articleId) {
+          setError('Article not found');
+          return;
+        }
+
+        const articleDoc = await getDoc(doc(db, 'articles', articleId));
         if (articleDoc.exists()) {
           setArticle(articleDoc.data() as Article);
         } else {
@@ -31,7 +39,7 @@ export const ArticleSource: React.FC = () => {
     };
 
     fetchArticle();
-  }, [id]);
+  }, [slug]);
 
   const formatSource = (article: Article) => {
     const lines = JSON.stringify(article, null, 2).split('\n');

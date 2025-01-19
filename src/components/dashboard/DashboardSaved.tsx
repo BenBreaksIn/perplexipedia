@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../config/firebase';
 import { collection, query, where, orderBy, doc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { generateSlug } from '../../utils/urlUtils';
 
 type SavedArticle = {
   id: string;
@@ -9,6 +10,7 @@ type SavedArticle = {
   savedAt: Date;
   lastModified: Date;
   excerpt: string;
+  slug?: string;
 };
 
 type SortOption = 'savedAt' | 'lastModified' | 'title';
@@ -153,7 +155,7 @@ export const DashboardSaved: React.FC = () => {
             <div className="flex justify-between items-start">
               <div className="space-y-1">
                 <h3 className="text-lg font-medium hover:text-perplexity-primary">
-                  <a href={`/article/${article.title.toLowerCase().replace(/ /g, '-')}`}>
+                  <a href={`/plexi/${article.slug || generateSlug(article.title)}`}>
                     {article.title}
                   </a>
                 </h3>
