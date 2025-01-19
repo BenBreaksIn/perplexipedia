@@ -7,7 +7,7 @@ Perplexipedia is an innovative platform that aims to create an unbiased, AI-enha
 The project has made significant progress in development. Currently implemented:
 - ✅ Core authentication system with Firebase
 - ✅ User dashboard with profile management
-- ✅ Dual AI integration (OpenAI GPT-4 and Perplexity AI)
+- ✅ Dual AI integration (OpenAI GPT-4o and Perplexity AI)
 - ✅ Dark/light mode theming with persistent settings
 - ✅ Responsive UI with TailwindCSS
 - ✅ Article management system with version control
