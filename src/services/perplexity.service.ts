@@ -3,13 +3,131 @@ import { getAuth } from 'firebase/auth';
 import { AIServiceConfig, IAIService } from './ai';
 import { formatPerplexityResponse } from './responseFormatter';
 
+interface OpenverseImage {
+  id: string;
+  title: string;
+  url: string;
+  creator: string;
+  creator_url: string;
+  license: string;
+  license_version: string;
+  license_url: string;
+  attribution: string;
+}
+
+interface OpenverseAuthResponse {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+}
+
 export class PerplexityAIService implements IAIService {
   private apiKey: string;
   private baseUrl = 'https://api.perplexity.ai';
   private model = 'llama-3.1-sonar-large-128k-online';
+  private openverseToken: string | null = null;
+  private openverseTokenExpiry: number | null = null;
 
   constructor(config: AIServiceConfig) {
     this.apiKey = config.apiKey;
+  }
+
+  private async getOpenverseToken(): Promise<string> {
+    // Check if we have a valid token
+    if (this.openverseToken && this.openverseTokenExpiry && Date.now() < this.openverseTokenExpiry) {
+      return this.openverseToken;
+    }
+
+    const clientId = import.meta.env.VITE_OPENVERSE_CLIENT_ID;
+    const clientSecret = import.meta.env.VITE_OPENVERSE_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new Error('Openverse credentials not found in environment variables');
+    }
+
+    const response = await fetch('https://api.openverse.org/v1/auth_tokens/token/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'client_credentials',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get Openverse token: ${response.statusText}`);
+    }
+
+    const data: OpenverseAuthResponse = await response.json();
+    this.openverseToken = data.access_token;
+    this.openverseTokenExpiry = Date.now() + (data.expires_in * 1000);
+
+    return this.openverseToken;
+  }
+
+  private async fetchOpenverseImages(query: string, maxImages: number = 5): Promise<OpenverseImage[]> {
+    try {
+      const token = await this.getOpenverseToken();
+      
+      // Clean up the query to extract just the topic
+      const cleanQuery = query.replace(/Generate \d+ articles? about /i, '')
+                             .replace(/with length between \d+ and \d+ words each/i, '')
+                             .trim();
+      
+      // Keep only essential search parameters
+      const searchParams = new URLSearchParams({
+        q: cleanQuery,
+        page_size: maxImages.toString(),
+        mature: 'false'
+      });
+      
+      const url = `https://api.openverse.org/v1/images/?${searchParams.toString()}`;
+      console.log('Fetching images for topic:', cleanQuery);
+      console.log('Openverse API URL:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Openverse API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`Failed to fetch images: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Openverse API response:', data);
+
+      if (!data.results || !Array.isArray(data.results)) {
+        console.error('Invalid response format from Openverse API:', data);
+        return [];
+      }
+
+      return data.results.map((img: any) => ({
+        id: img.id,
+        title: img.title || 'Untitled Image',
+        url: img.url,
+        creator: img.creator || 'Unknown Creator',
+        creator_url: img.creator_url || '',
+        license: img.license || '',
+        license_version: img.license_version || '',
+        license_url: img.license_url || '',
+        attribution: img.attribution || `Image by ${img.creator || 'Unknown Creator'}`
+      }));
+    } catch (error) {
+      console.error('Error fetching Openverse images:', error);
+      return [];
+    }
   }
 
   private async makeRequest(messages: any[], temperature: number = 0.2) {
@@ -251,6 +369,10 @@ export class PerplexityAIService implements IAIService {
         return null;
       }
 
+      // Fetch relevant images from Openverse
+      const images = await this.fetchOpenverseImages(topic);
+      console.log('Fetched Openverse images:', images);
+
       // Get the current user's ID from auth
       const auth = getAuth();
       const currentUser = auth.currentUser;
@@ -264,6 +386,14 @@ export class PerplexityAIService implements IAIService {
         image: 0,
         key_facts: orderedFacts
       };
+
+      // Format images for the article
+      const formattedImages = images.map((img, index) => ({
+        url: img.url,
+        description: img.title,
+        attribution: img.attribution,
+        index
+      }));
 
       return {
         title: formattedResponse.title,
@@ -283,7 +413,8 @@ export class PerplexityAIService implements IAIService {
         isAIGenerated: true,
         categoriesLockedByAI: true,
         citations: articleResponse.citations,
-        infobox
+        infobox,
+        images: formattedImages
       };
     } catch (error) {
       console.error('Error generating article:', error);
