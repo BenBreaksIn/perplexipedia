@@ -353,12 +353,14 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
         <div className="flex justify-end space-x-4">
           {article?.status === 'published' ? (
             <>
-              <button
-                onClick={() => window.location.href = `/plexi/${article.slug}/history`}
+              <a
+                href={`/plexi/${article.slug}/history`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
               >
                 History
-              </button>
+              </a>
               <button
                 onClick={() => setShowPreview(true)}
                 className="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
