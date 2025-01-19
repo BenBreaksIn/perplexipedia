@@ -2,13 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { Article } from '../../types/article';
 import { Sidebar } from '../Sidebar';
 import { getArticleIdFromSlug } from '../../utils/urlUtils';
 
-interface ArticleVersion extends Article {
+interface ArticleVersion {
+  id: string;
+  articleId: string;
   version: number;
+  content: string;
+  author: string;
+  authorId: string;
   timestamp: any;
+  changes: string;
 }
 
 export const ArticleHistory: React.FC = () => {
@@ -37,8 +42,7 @@ export const ArticleHistory: React.FC = () => {
         
         const versionsSnapshot = await getDocs(versionsQuery);
         const versionsData = versionsSnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
+          ...doc.data()
         })) as ArticleVersion[];
         
         setVersions(versionsData);
@@ -112,11 +116,16 @@ export const ArticleHistory: React.FC = () => {
                         Version {version.version}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {version.timestamp?.toDate().toLocaleString()}
+                        {version.timestamp?.toDate?.() ? version.timestamp.toDate().toLocaleString() : new Date(version.timestamp).toLocaleString()}
                       </div>
                       <div className="text-sm text-gray-500">
                         by {version.author || 'Unknown'}
                       </div>
+                      {version.changes && (
+                        <div className="text-sm text-gray-600 mt-1">
+                          {version.changes}
+                        </div>
+                      )}
                     </div>
                     <div className="flex space-x-2">
                       <button 

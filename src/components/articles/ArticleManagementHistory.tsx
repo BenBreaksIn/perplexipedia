@@ -17,7 +17,7 @@ export const ArticleManagementHistory: React.FC<ArticleManagementHistoryProps> =
         <h2 className="text-lg font-medium">Version History</h2>
       </div>
       <div className="divide-y divide-gray-200 dark:divide-gray-700">
-        {article.versions.map((version) => (
+        {article.versions?.map((version) => (
           <div key={version.id} className="px-4 py-3">
             <div className="flex justify-between items-start">
               <div>

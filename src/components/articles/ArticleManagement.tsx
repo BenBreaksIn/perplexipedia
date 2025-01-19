@@ -3,7 +3,7 @@ import { Article } from '../../types/article';
 import { ArticleEditor } from './ArticleEditor';
 import { ArticleManagementHistory } from './ArticleManagementHistory';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, query, collection, getDocs, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { generateSlug, getArticleIdFromSlug } from '../../utils/urlUtils';
@@ -75,21 +75,37 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
         try {
             if (article) {
                 // Update existing article
-                const newVersion = {
-                    id: crypto.randomUUID(),
+                const versionId = crypto.randomUUID();
+                const timestamp = new Date();
+                
+                // Get the latest version number
+                const versionsQuery = query(
+                    collection(db, 'articleVersions'),
+                    where('articleId', '==', article.id),
+                    orderBy('version', 'desc'),
+                    limit(1)
+                );
+                const versionsSnapshot = await getDocs(versionsQuery);
+                const latestVersion = versionsSnapshot.empty ? 0 : versionsSnapshot.docs[0].data().version;
+                
+                // Save the new version to articleVersions collection
+                await setDoc(doc(db, 'articleVersions', versionId), {
+                    id: versionId,
+                    articleId: article.id,
+                    version: latestVersion + 1,
                     content: articleData.content!,
+                    title: articleData.title || article.title,
                     author: currentUser.displayName || currentUser.email || 'unknown',
-                    timestamp: new Date(),
+                    authorId: currentUser.uid,
+                    timestamp: timestamp,
                     changes: 'Updated article'
-                };
+                });
 
                 const updatedArticle: Article = {
                     ...article,
                     ...articleData,
                     author: currentUser.displayName || currentUser.email || 'unknown',
-                    versions: [...article.versions, newVersion],
-                    currentVersion: newVersion.id,
-                    updatedAt: new Date(),
+                    updatedAt: timestamp,
                     slug: articleData.title ? generateSlug(articleData.title) : article.slug
                 };
 
@@ -102,28 +118,39 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
             } else {
                 // Create new article
                 const articleId = crypto.randomUUID();
+                const versionId = crypto.randomUUID();
+                const timestamp = new Date();
+                
                 const newArticle: Article = {
                     id: articleId,
                     title: articleData.title!,
                     content: articleData.content!,
                     status: articleData.status!,
                     author: currentUser.displayName || currentUser.email || 'unknown',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
+                    authorId: currentUser.uid,
+                    createdAt: timestamp,
+                    updatedAt: timestamp,
                     categories: articleData.categories!,
                     tags: articleData.tags!,
-                    versions: [{
-                        id: crypto.randomUUID(),
-                        content: articleData.content!,
-                        author: currentUser.displayName || currentUser.email || 'unknown',
-                        timestamp: new Date(),
-                        changes: 'Initial version'
-                    }],
-                    currentVersion: articleData.currentVersion!,
                     slug: generateSlug(articleData.title!)
                 };
 
+                // Save the article
                 await setDoc(doc(db, 'articles', articleId), newArticle);
+
+                // Save the initial version
+                await setDoc(doc(db, 'articleVersions', versionId), {
+                    id: versionId,
+                    articleId: articleId,
+                    version: 1,
+                    content: articleData.content!,
+                    title: articleData.title!,
+                    author: currentUser.displayName || currentUser.email || 'unknown',
+                    authorId: currentUser.uid,
+                    timestamp: timestamp,
+                    changes: 'Initial version'
+                });
+
                 setArticle(newArticle);
                 
                 if (newArticle.status === 'published') {
@@ -138,26 +165,40 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
     const handleRestoreVersion = async (versionId: string) => {
         if (!article || !currentUser) return;
 
-        const version = article.versions.find(v => v.id === versionId);
-        if (!version) return;
-
-        const newVersion = {
-            id: crypto.randomUUID(),
-            content: version.content,
-            author: currentUser.displayName || currentUser.email || 'unknown',
-            timestamp: new Date(),
-            changes: `Restored version from ${new Date(version.timestamp).toLocaleString()}`
-        };
-
-        const updatedArticle: Article = {
-            ...article,
-            content: version.content,
-            versions: [...article.versions, newVersion],
-            currentVersion: newVersion.id,
-            updatedAt: new Date()
-        };
-
         try {
+            const docRef = doc(db, 'articleVersions', versionId);
+            const docSnap = await getDoc(docRef);
+            
+            if (!docSnap.exists()) {
+                console.error('Version not found');
+                return;
+            }
+
+            const version = docSnap.data();
+            const timestamp = new Date();
+            const newVersionId = crypto.randomUUID();
+
+            // Create a new version with the restored content
+            await setDoc(doc(db, 'articleVersions', newVersionId), {
+                id: newVersionId,
+                articleId: article.id,
+                version: version.version + 1,
+                content: version.content,
+                title: version.title,
+                author: currentUser.displayName || currentUser.email || 'unknown',
+                authorId: currentUser.uid,
+                timestamp: timestamp,
+                changes: `Restored version ${version.version} from ${new Date(version.timestamp).toLocaleString()}`
+            });
+
+            // Update the article with the restored content
+            const updatedArticle: Article = {
+                ...article,
+                content: version.content,
+                title: version.title,
+                updatedAt: timestamp
+            };
+
             await setDoc(doc(db, 'articles', article.id), updatedArticle);
             setArticle(updatedArticle);
             setView('edit');

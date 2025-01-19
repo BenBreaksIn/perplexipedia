@@ -37,18 +37,19 @@ export interface Article {
     content: string;
     status: 'draft' | 'under_review' | 'published' | 'archived';
     author: string;
+    authorId: string;  // User ID of the author
     createdAt: Date;
     updatedAt: Date;
     categories: Array<{ id: string; name: string }>;
     tags: Array<{ id: string; name: string }>;
-    versions: Array<{
+    versions?: Array<{
         id: string;
         content: string;
         author: string;
         timestamp: Date;
         changes: string;
     }>;
-    currentVersion: string;
+    currentVersion?: string;
     images?: ArticleImage[];
     infobox?: InfoBox;
     isAIGenerated?: boolean;
