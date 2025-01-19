@@ -24,6 +24,12 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
         const loadArticle = async () => {
             if (!currentUser) return;
 
+            // If there's no id or slug, we're creating a new article
+            if (!id && !slug) {
+                setLoading(false);
+                return;
+            }
+
             try {
                 setLoading(true);
                 let articleId: string | undefined;

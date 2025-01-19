@@ -29,6 +29,7 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
   const [isGeneratingCategories, setIsGeneratingCategories] = useState(false);
   const [isExpanding, setIsExpanding] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [editSummary, setEditSummary] = useState('');
 
   // Markdown toolbar handlers
   const insertMarkdown = (prefix: string, suffix: string = '') => {
@@ -79,8 +80,23 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
       status,
       images,
       infobox,
-      categoriesLockedByAI: article?.categoriesLockedByAI
+      categoriesLockedByAI: article?.categoriesLockedByAI,
+      ...(status === 'submit_revision' && {
+        versions: [
+          ...(article?.versions || []),
+          {
+            id: Date.now().toString(),
+            content,
+            author: article?.author || '',
+            timestamp: new Date(),
+            changes: editSummary
+          }
+        ]
+      })
     });
+    if (status === 'submit_revision') {
+      setEditSummary('');
+    }
   };
 
   const handleAIGenerate = async () => {
@@ -201,14 +217,9 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Article Title"
-            className="text-2xl font-bold p-2 w-full border-b border-gray-300 focus:outline-none focus:border-blue-500"
+            className="text-2xl font-bold p-2 w-full border-b border-gray-300 focus:outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-700"
+            disabled={article?.status === 'published'}
           />
-          <button
-            onClick={() => setShowPreview(!showPreview)}
-            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-          >
-            {showPreview ? 'Edit' : 'Preview'}
-          </button>
         </div>
 
         {!showPreview && (
@@ -307,31 +318,89 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
               </div>
             )}
 
-            <div>
-              <h3 className="font-bold mb-2">Status</h3>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as Article['status'])}
-                className="w-full p-2 border rounded"
-              >
-                <option value="draft">Draft</option>
-                <option value="under_review">Under Review</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
+            {article?.status !== 'published' && (
+              <div>
+                <h3 className="font-bold mb-2">Status</h3>
+                {article?.status === 'submit_revision' || article?.status === 'under_review' ? (
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as Article['status'])}
+                    className="w-full p-2 border rounded"
+                  >
+                    <option value="submit_revision">Submit Revision</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="published">Published</option>
+                  </select>
+                ) : (
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as Article['status'])}
+                    className="w-full p-2 border rounded"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                )}
+              </div>
+            )}
           </>
         )}
 
         {error && <p className="text-red-500">{error}</p>}
 
+        {article?.status === 'published' && (
+          <div className="border-t pt-4">
+            <label htmlFor="editSummary" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Edit Summary
+            </label>
+            <input
+              id="editSummary"
+              type="text"
+              value={editSummary}
+              onChange={(e) => setEditSummary(e.target.value)}
+              placeholder="Briefly describe your changes..."
+              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        )}
+
         <div className="flex justify-end space-x-4">
-          <button
-            onClick={handleSave}
-            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Save
-          </button>
+          {article?.status === 'published' ? (
+            <>
+              <button
+                onClick={() => window.location.href = `/plexi/${article.slug}/history`}
+                className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                History
+              </button>
+              <button
+                onClick={() => setShowPreview(true)}
+                className="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Preview Revision
+              </button>
+              <button
+                onClick={() => {
+                  setStatus('submit_revision');
+                  handleSave();
+                }}
+                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                disabled={!editSummary.trim()}
+                title={!editSummary.trim() ? 'Please provide an edit summary' : ''}
+              >
+                Submit Revision
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleSave}
+              className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Save
+            </button>
+          )}
         </div>
       </div>
 
