@@ -5,6 +5,7 @@ import { db } from '../../config/firebase';
 import { Article } from '../../types/article';
 import { format } from 'date-fns';
 import { Sidebar } from '../Sidebar';
+import { getArticleIdFromSlug } from '../../utils/urlUtils';
 
 const formatDate = (date: Date | Timestamp) => {
   if (date instanceof Timestamp) {
@@ -14,18 +15,25 @@ const formatDate = (date: Date | Timestamp) => {
 };
 
 export const ArticleInformation: React.FC = () => {
-  const { id } = useParams();
+  const { slug } = useParams<{ slug: string }>();
   const [article, setArticle] = React.useState<Article | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const loadArticle = async () => {
-      if (!id) return;
+      if (!slug) return;
 
       try {
         setLoading(true);
-        const docRef = doc(db, 'articles', id);
+        const articleId = await getArticleIdFromSlug(slug);
+        
+        if (!articleId) {
+          setError('Article not found');
+          return;
+        }
+
+        const docRef = doc(db, 'articles', articleId);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
@@ -45,7 +53,7 @@ export const ArticleInformation: React.FC = () => {
     };
 
     loadArticle();
-  }, [id]);
+  }, [slug]);
 
   const renderContent = () => {
     if (loading) {

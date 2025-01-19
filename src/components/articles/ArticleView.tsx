@@ -10,6 +10,7 @@ import { Sidebar } from '../Sidebar';
 import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
+import { getArticleIdFromSlug, generateSlug } from '../../utils/urlUtils';
 
 const formatDate = (date: Date | Timestamp) => {
   if (date instanceof Timestamp) {
@@ -19,7 +20,7 @@ const formatDate = (date: Date | Timestamp) => {
 };
 
 export const ArticleView: React.FC = () => {
-  const { id } = useParams();
+  const { slug } = useParams<{ slug: string }>();
   const { currentUser } = useAuth();
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,11 +30,18 @@ export const ArticleView: React.FC = () => {
 
   useEffect(() => {
     const loadArticle = async () => {
-      if (!id) return;
+      if (!slug) return;
 
       try {
         setLoading(true);
-        const docRef = doc(db, 'articles', id);
+        const articleId = await getArticleIdFromSlug(slug);
+        
+        if (!articleId) {
+          setError('Article not found');
+          return;
+        }
+
+        const docRef = doc(db, 'articles', articleId);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
@@ -42,6 +50,14 @@ export const ArticleView: React.FC = () => {
             setError('This article is not available for public viewing.');
             return;
           }
+          
+          // If the article doesn't have a slug, add it
+          if (!articleData.slug) {
+            const newSlug = generateSlug(articleData.title);
+            await setDoc(docRef, { ...articleData, slug: newSlug }, { merge: true });
+            articleData.slug = newSlug;
+          }
+          
           setArticle({
             ...articleData,
             id: docSnap.id
@@ -53,7 +69,7 @@ export const ArticleView: React.FC = () => {
             const q = query(
               savedRef,
               where('userId', '==', currentUser.uid),
-              where('articleId', '==', id)
+              where('articleId', '==', articleId)
             );
             const savedSnap = await getDocs(q);
             setIsSaved(!savedSnap.empty);
@@ -70,7 +86,7 @@ export const ArticleView: React.FC = () => {
     };
 
     loadArticle();
-  }, [id, currentUser]);
+  }, [slug, currentUser]);
 
   const handleSaveArticle = async () => {
     if (!currentUser || !article) return;
@@ -246,15 +262,15 @@ export const ArticleView: React.FC = () => {
                 components={{
                   h1: ({node, ...props}) => {
                     const id = props.children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                    return <h1 id={id} className="text-4xl font-bold mt-8 mb-4" {...props} />;
+                    return <h1 id={id} className="text-4xl font-bold mt-8 mb-4 scroll-mt-20" {...props} />;
                   },
                   h2: ({node, ...props}) => {
                     const id = props.children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                    return <h2 id={id} className="text-3xl font-bold mt-6 mb-3" {...props} />;
+                    return <h2 id={id} className="text-3xl font-bold mt-6 mb-3 scroll-mt-20" {...props} />;
                   },
                   h3: ({node, ...props}) => {
                     const id = props.children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                    return <h3 id={id} className="text-2xl font-bold mt-5 mb-2" {...props} />;
+                    return <h3 id={id} className="text-2xl font-bold mt-5 mb-2 scroll-mt-20" {...props} />;
                   },
                   p: ({node, children, ...props}) => {
                     // Check if the paragraph only contains an image

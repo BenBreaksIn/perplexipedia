@@ -24,7 +24,7 @@ export const Sidebar: React.FC<{ content?: string }> = ({ content }) => {
 
       while ((match = headerRegex.exec(content)) !== null) {
         const level = match[1].length;
-        const text = match[2];
+        const text = match[2].trim().replace(/^#+\s*/, ''); // Remove any remaining # symbols
         const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
         headers.push({ level, text, id });
       }
@@ -44,7 +44,7 @@ export const Sidebar: React.FC<{ content?: string }> = ({ content }) => {
     }
   };
 
-  const isArticlePage = location.pathname.startsWith('/articles/') && !location.pathname.includes('/edit');
+  const isArticlePage = location.pathname.startsWith('/plexi/') && !location.pathname.includes('/edit');
 
   return (
     <aside className={`${isMenuOpen ? 'md:block' : 'md:hidden'} hidden w-64 pr-8 transition-all duration-300 ease-in-out`}>
@@ -91,7 +91,7 @@ export const Sidebar: React.FC<{ content?: string }> = ({ content }) => {
               onClick={() => {
                 const articleId = location.pathname.split('/')[2];
                 if (articleId) {
-                  window.location.href = `/articles/${articleId}/info`;
+                  window.location.href = `/plexi/${articleId}/info`;
                 }
               }}
               className="nav-link block w-full text-left"

@@ -4,6 +4,7 @@ import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Article } from '../../types/article';
 import { Sidebar } from '../Sidebar';
+import { getArticleIdFromSlug } from '../../utils/urlUtils';
 
 interface ArticleVersion extends Article {
   version: number;
@@ -11,19 +12,26 @@ interface ArticleVersion extends Article {
 }
 
 export const ArticleHistory: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const [versions, setVersions] = useState<ArticleVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
-      if (!id) return;
+      if (!slug) return;
       
       try {
+        const articleId = await getArticleIdFromSlug(slug);
+        
+        if (!articleId) {
+          setError('Article not found');
+          return;
+        }
+
         const versionsQuery = query(
           collection(db, 'articleVersions'),
-          where('articleId', '==', id),
+          where('articleId', '==', articleId),
           orderBy('version', 'desc')
         );
         
@@ -43,7 +51,7 @@ export const ArticleHistory: React.FC = () => {
     };
 
     fetchHistory();
-  }, [id]);
+  }, [slug]);
 
   if (loading) {
     return (
@@ -113,7 +121,7 @@ export const ArticleHistory: React.FC = () => {
                     <div className="flex space-x-2">
                       <button 
                         className="px-3 py-1 text-sm rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800"
-                        onClick={() => window.location.href = `/articles/${id}/source?version=${version.version}`}
+                        onClick={() => window.location.href = `/plexi/${slug}/source?version=${version.version}`}
                       >
                         View
                       </button>

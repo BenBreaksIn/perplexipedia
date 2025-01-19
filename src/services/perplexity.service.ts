@@ -267,6 +267,8 @@ export class PerplexityAIService implements IAIService {
             .replace(/^#{1,3}\s+/, '')     // Remove markdown headers
             .replace(/^[-*]\s+/, '')        // Remove bullet points
             .replace(/###/, '')             // Remove any remaining ###
+            .replace(/\*\*/g, '')           // Remove bold markdown
+            .replace(/\*/g, '')             // Remove any remaining asterisks
             .trim();
 
           // Only add if we have clean, non-empty values and key doesn't start with ###

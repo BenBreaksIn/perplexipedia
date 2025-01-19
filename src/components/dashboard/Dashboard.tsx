@@ -179,8 +179,8 @@ export const Dashboard: React.FC = () => {
               <Route path="saved" element={<DashboardSaved />} />
               <Route path="settings" element={<DashboardSettings />} />
               <Route path="ai-settings" element={<DashboardAISettings />} />
-              <Route path="articles/new" element={<ArticleManagement />} />
-              <Route path="articles/:id/edit" element={<ArticleManagement />} />
+              <Route path="plexi/new" element={<ArticleManagement />} />
+              <Route path="plexi/:slug/edit" element={<ArticleManagement />} />
             </Routes>
           </div>
         </div>

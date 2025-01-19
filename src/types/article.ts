@@ -54,4 +54,5 @@ export interface Article {
     isAIGenerated?: boolean;
     categoriesLockedByAI?: boolean;
     citations?: any[]; // Citations from Perplexity API
+    slug?: string; // URL-friendly version of the title
 } 

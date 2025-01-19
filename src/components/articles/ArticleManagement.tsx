@@ -2,36 +2,62 @@ import { useState, useEffect } from 'react';
 import { Article } from '../../types/article';
 import { ArticleEditor } from './ArticleEditor';
 import { ArticleManagementHistory } from './ArticleManagementHistory';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { generateSlug, getArticleIdFromSlug } from '../../utils/urlUtils';
 
 interface ArticleManagementProps {
     article?: Article;
 }
 
 export const ArticleManagement = ({ article: initialArticle }: ArticleManagementProps) => {
-    const { id } = useParams();
+    const { id, slug } = useParams();
+    const navigate = useNavigate();
     const { currentUser } = useAuth();
     const [article, setArticle] = useState<Article | undefined>(initialArticle);
     const [view, setView] = useState<'edit' | 'history'>('edit');
-    const [loading, setLoading] = useState(!!id);
+    const [loading, setLoading] = useState(!!id || !!slug);
 
     useEffect(() => {
         const loadArticle = async () => {
-            if (!id || !currentUser) return;
+            if (!currentUser) return;
 
             try {
                 setLoading(true);
-                const docRef = doc(db, 'articles', id);
+                console.log('Loading article with:', { id, slug });
+                let articleId: string | undefined = id;
+
+                if (slug) {
+                    console.log('Getting article ID from slug:', slug);
+                    const foundId = await getArticleIdFromSlug(slug);
+                    console.log('Found article ID:', foundId);
+                    if (!foundId) {
+                        console.error('Article not found');
+                        return;
+                    }
+                    articleId = foundId;
+                }
+
+                if (!articleId) {
+                    console.log('No article ID found');
+                    return;
+                }
+
+                console.log('Fetching article with ID:', articleId);
+                const docRef = doc(db, 'articles', articleId);
                 const docSnap = await getDoc(docRef);
                 
                 if (docSnap.exists()) {
-                    setArticle({
+                    const articleData = {
                         id: docSnap.id,
                         ...docSnap.data()
-                    } as Article);
+                    } as Article;
+                    console.log('Article loaded:', articleData);
+                    setArticle(articleData);
+                } else {
+                    console.log('Article document not found');
                 }
             } catch (error) {
                 console.error('Error loading article:', error);
@@ -41,7 +67,7 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
         };
 
         loadArticle();
-    }, [id, currentUser]);
+    }, [id, slug, currentUser]);
 
     const handleSave = async (articleData: Partial<Article>) => {
         if (!currentUser) return;
@@ -63,11 +89,16 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
                     author: currentUser.displayName || currentUser.email || 'unknown',
                     versions: [...article.versions, newVersion],
                     currentVersion: newVersion.id,
-                    updatedAt: new Date()
+                    updatedAt: new Date(),
+                    slug: articleData.title ? generateSlug(articleData.title) : article.slug
                 };
 
                 await setDoc(doc(db, 'articles', article.id), updatedArticle);
                 setArticle(updatedArticle);
+                
+                if (updatedArticle.status === 'published') {
+                    navigate(`/plexi/${updatedArticle.slug}`);
+                }
             } else {
                 // Create new article
                 const articleId = crypto.randomUUID();
@@ -88,11 +119,16 @@ export const ArticleManagement = ({ article: initialArticle }: ArticleManagement
                         timestamp: new Date(),
                         changes: 'Initial version'
                     }],
-                    currentVersion: articleData.currentVersion!
+                    currentVersion: articleData.currentVersion!,
+                    slug: generateSlug(articleData.title!)
                 };
 
                 await setDoc(doc(db, 'articles', articleId), newArticle);
                 setArticle(newArticle);
+                
+                if (newArticle.status === 'published') {
+                    navigate(`/plexi/${newArticle.slug}`);
+                }
             }
         } catch (error) {
             console.error('Error saving article:', error);
