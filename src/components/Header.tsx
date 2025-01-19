@@ -1,15 +1,106 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppearance } from '../contexts/AppearanceContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../config/firebase';
+
+interface SearchResult {
+  id: string;
+  title: string;
+  excerpt: string;
+}
 
 export const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const { isMenuOpen, setIsMenuOpen } = useAppearance();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const desktopSearchRef = useRef<HTMLDivElement>(null);
+  const mobileSearchRef = useRef<HTMLDivElement>(null);
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        (desktopSearchRef.current && !desktopSearchRef.current.contains(event.target as Node)) &&
+        (mobileSearchRef.current && !mobileSearchRef.current.contains(event.target as Node))
+      ) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Search articles when query changes
+  useEffect(() => {
+    const searchArticles = async () => {
+      if (!searchQuery.trim()) {
+        setSearchResults([]);
+        return;
+      }
+
+      try {
+        const articlesRef = collection(db, 'articles');
+        const searchLower = searchQuery.toLowerCase();
+        
+        // First, get all published articles
+        const q = query(
+          articlesRef,
+          where('status', '==', 'published'),
+          orderBy('title'),
+          limit(50) // Get more articles to filter through
+        );
+
+        const querySnapshot = await getDocs(q);
+        const results: SearchResult[] = [];
+
+        // Filter articles client-side for partial matches
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.title.toLowerCase().includes(searchLower)) {
+            results.push({
+              id: doc.id,
+              title: data.title,
+              excerpt: data.content?.slice(0, 150) + '...' || 'No content available'
+            });
+          }
+        });
+
+        // Sort by relevance (exact matches first, then partial matches)
+        results.sort((a, b) => {
+          const aTitle = a.title.toLowerCase();
+          const bTitle = b.title.toLowerCase();
+          const aStartsWith = aTitle.startsWith(searchLower);
+          const bStartsWith = bTitle.startsWith(searchLower);
+          
+          if (aStartsWith && !bStartsWith) return -1;
+          if (!aStartsWith && bStartsWith) return 1;
+          return aTitle.localeCompare(bTitle);
+        });
+
+        // Limit to top 5 results after filtering and sorting
+        setSearchResults(results.slice(0, 5));
+        setShowResults(true);
+      } catch (error) {
+        console.error('Error searching articles:', error);
+      }
+    };
+
+    const debounceTimeout = setTimeout(searchArticles, 300);
+    return () => clearTimeout(debounceTimeout);
+  }, [searchQuery]);
+
+  const handleSearchSelect = (articleId: string) => {
+    setShowResults(false);
+    setSearchQuery('');
+    navigate(`/articles/${articleId}`, { replace: true });
+  };
 
   const handleLogout = async () => {
     try {
@@ -84,12 +175,34 @@ export const Header: React.FC = () => {
             <h1 className="text-2xl font-linux-libertine hidden md:block section-title">Perplexipedia</h1>
           </div>
         </div>
-        <div className="flex-1 max-w-3xl mx-4 hidden md:block">
+        <div className="flex-1 max-w-3xl mx-4 hidden md:block relative" ref={desktopSearchRef}>
           <input
             type="search"
             placeholder="Search Perplexipedia (Ctrl + K)"
             className="search-input w-full"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setShowResults(true)}
           />
+          {/* Search Results Dropdown */}
+          {showResults && searchResults.length > 0 && (
+            <div className="absolute w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+              {searchResults.map((result) => (
+                <button
+                  key={result.id}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSearchSelect(result.id);
+                  }}
+                  className="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 border-b last:border-b-0 border-gray-200 dark:border-gray-700"
+                >
+                  <div className="font-medium text-gray-900 dark:text-white">{result.title}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{result.excerpt}</div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center space-x-3">
           <button className="btn-secondary hidden md:block">
@@ -130,12 +243,34 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Mobile Search Bar */}
-      <div className="md:hidden px-4 py-2">
+      <div className="md:hidden px-4 py-2 relative" ref={mobileSearchRef}>
         <input
           type="search"
           placeholder="Search Perplexipedia"
           className="search-input w-full"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => setShowResults(true)}
         />
+        {/* Mobile Search Results Dropdown */}
+        {showResults && searchResults.length > 0 && (
+          <div className="absolute w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+            {searchResults.map((result) => (
+              <button
+                key={result.id}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSearchSelect(result.id);
+                }}
+                className="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 border-b last:border-b-0 border-gray-200 dark:border-gray-700"
+              >
+                <div className="font-medium text-gray-900 dark:text-white">{result.title}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{result.excerpt}</div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Page Tabs with Toggle */}
