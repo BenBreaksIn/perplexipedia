@@ -56,4 +56,5 @@ export interface Article {
     categoriesLockedByAI?: boolean;
     citations?: any[]; // Citations from Perplexity API
     slug?: string; // URL-friendly version of the title
+    isContribution?: boolean; // Indicates if this is a contribution to someone else's article
 } 
