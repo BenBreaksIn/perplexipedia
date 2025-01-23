@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { useAI } from '../../hooks/useAI';
+import { useAdmin } from '../../hooks/useAdmin';
 import { Header } from '../Header';
 import { Sidebar } from '../Sidebar';
 import { Footer } from '../Footer';
@@ -17,8 +18,33 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
   article,
   onSave,
 }) => {
+  const { isAdmin } = useAdmin();
+
+  const formatInfoBoxMarkdown = (infobox: InfoBox | undefined, articleImages: ArticleImage[]) => {
+    if (!infobox) return '';
+    
+    let markdown = '| Info Box |\n|-|\n';
+    markdown += `| **${infobox.title}** |\n`;
+    if (articleImages && articleImages[infobox.image]) {
+      const image = articleImages[infobox.image];
+      markdown += `| ![${image.description}](${image.url}) |\n`;
+      markdown += `| *${image.attribution}* |\n`;
+    }
+    for (const [key, value] of Object.entries(infobox.key_facts)) {
+      markdown += `| **${key}**: ${value} |\n`;
+    }
+    markdown += '\n';
+    return markdown;
+  };
+
   const [title, setTitle] = useState(article?.title || '');
-  const [content, setContent] = useState(article?.content || '');
+  const [content, setContent] = useState(() => {
+    if (article?.infobox) {
+      const infoboxMarkdown = formatInfoBoxMarkdown(article.infobox, article.images || []);
+      return infoboxMarkdown + (article?.content || '');
+    }
+    return article?.content || '';
+  });
   const [selectedCategories, setSelectedCategories] = useState(article?.categories || []);
   const [selectedTags, setSelectedTags] = useState(article?.tags || []);
   const [status, setStatus] = useState(article?.status || 'draft');
@@ -55,7 +81,28 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     }, 0);
   };
 
+  const insertInfoBoxTemplate = () => {
+    const template = `| Info Box |
+|-|
+| **Article Title** |
+| ![Image Description](image_url) |
+| *Image Attribution* |
+| **Born**: [Birth Date] |
+| **Occupation**: [Occupation] |
+| **Known For**: [Notable Achievements] |
+| **Education**: [Education Details] |
+
+`;
+    // Insert at the beginning of the content
+    setContent(template + content);
+  };
+
+  const hasInfoBox = (content: string) => {
+    return content.includes('| Info Box |') && content.includes('|-|');
+  };
+
   const markdownControls = [
+    { icon: '📋', action: insertInfoBoxTemplate, tooltip: 'Insert Info Box Template' },
     { icon: 'B', action: () => insertMarkdown('**', '**'), tooltip: 'Bold' },
     { icon: 'I', action: () => insertMarkdown('*', '*'), tooltip: 'Italic' },
     { icon: 'H1', action: () => insertMarkdown('# '), tooltip: 'Heading 1' },
@@ -103,6 +150,8 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     if (!title) return;
     const result = await generateArticle(title);
     if (result) {
+      const infoboxMarkdown = formatInfoBoxMarkdown(result.infobox, result.images || []);
+
       // If there's existing content, use it as context for the generation
       if (content.trim()) {
         const combinedContent = result.content?.split('\n') || [];
@@ -112,9 +161,9 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
            combinedContent[0].trim() === '')) {
           combinedContent.shift();
         }
-        setContent(content + '\n\n' + combinedContent.join('\n').trim());
+        setContent(content + '\n\n' + infoboxMarkdown + combinedContent.join('\n').trim());
       } else {
-        setContent(result.content || '');
+        setContent(infoboxMarkdown + (result.content || ''));
       }
       
       setSelectedCategories(result.categories || []);
@@ -200,6 +249,116 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     );
   };
 
+  const handleSubmitArticle = () => {
+    if (!hasInfoBox(content) && !isAdmin) {
+      if (!window.confirm('This article does not have an info box. Info boxes are required for all articles. Would you like to add one now?')) {
+        return;
+      }
+      insertInfoBoxTemplate();
+      return;
+    }
+    setStatus('under_review');
+    handleSave();
+  };
+
+  const parseInfoBoxFromMarkdown = (content: string): InfoBox | undefined => {
+    const lines = content.split('\n');
+    let infoBoxLines: string[] = [];
+    let isInInfoBox = false;
+    
+    // Extract info box lines
+    for (const line of lines) {
+      if (line.includes('| Info Box |')) {
+        isInInfoBox = true;
+        infoBoxLines.push(line);
+        continue;
+      }
+      if (isInInfoBox) {
+        if (line.trim() === '') {
+          break;
+        }
+        infoBoxLines.push(line);
+      }
+    }
+
+    if (infoBoxLines.length < 3) return undefined;
+
+    const key_facts: Record<string, string> = {};
+    let title = '';
+    let imageIndex = -1;
+
+    // Parse the lines
+    for (let i = 2; i < infoBoxLines.length; i++) {
+      const line = infoBoxLines[i].trim();
+      if (!line || line === '|-|') continue;
+
+      // Remove table markers and trim
+      const content = line.replace(/^\||\|$/g, '').trim();
+
+      if (content.startsWith('**') && content.endsWith('**')) {
+        // This is the title
+        title = content.replace(/^\*\*|\*\*$/g, '');
+      } else if (content.startsWith('![')) {
+        // This is the image - we'll use the first image in the article
+        imageIndex = 0;
+      } else if (content.startsWith('**')) {
+        // This is a key-value pair
+        const match = content.match(/^\*\*([^*]+)\*\*:\s*(.+)$/);
+        if (match) {
+          key_facts[match[1]] = match[2];
+        }
+      }
+    }
+
+    if (!title) return undefined;
+
+    return {
+      title,
+      image: imageIndex,
+      key_facts
+    };
+  };
+
+  const handlePreview = () => {
+    // Parse the info box from markdown when entering preview mode
+    const parsedInfoBox = parseInfoBoxFromMarkdown(content);
+    if (parsedInfoBox) {
+      setInfobox(parsedInfoBox);
+    }
+    setShowPreview(true);
+    // Prevent background scroll
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closePreview = () => {
+    setShowPreview(false);
+    // Restore background scroll
+    document.body.style.overflow = 'auto';
+  };
+
+  const filterInfoBoxFromContent = (content: string): string => {
+    const lines = content.split('\n');
+    let isInInfoBox = false;
+    let skipCount = 0;
+    
+    // Find where the info box ends
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.includes('| Info Box |')) {
+        isInInfoBox = true;
+        skipCount = i;
+        continue;
+      }
+      if (isInInfoBox && line.trim() === '') {
+        skipCount = i + 1;
+        break;
+      }
+    }
+    
+    // Return content without the info box
+    return lines.slice(skipCount).join('\n').trim();
+  };
+
   return (
     <>
       <div className={`space-y-4 ${showPreview ? 'hidden' : ''}`}>
@@ -245,7 +404,7 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
                 <span>{isGeneratingCategories ? 'Analyzing Content...' : 'Generate Categories'}</span>
               </button>
               <button
-                onClick={() => setShowPreview(!showPreview)}
+                onClick={handlePreview}
                 className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 flex items-center space-x-2"
                 title="Toggle preview mode"
               >
@@ -253,7 +412,7 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
                   <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                   <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                 </svg>
-                <span>{showPreview ? 'Edit' : 'Preview'}</span>
+                <span>Preview</span>
               </button>
             </div>
 
@@ -322,10 +481,7 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
                   Save Draft
                 </button>
                 <button
-                  onClick={() => {
-                    setStatus('under_review');
-                    handleSave();
-                  }}
+                  onClick={handleSubmitArticle}
                   className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                 >
                   Submit Article
@@ -397,16 +553,16 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
               rehypePlugins={[rehypeRaw]}
               className="markdown-content"
             >
-              {content}
+              {filterInfoBoxFromContent(content)}
             </ReactMarkdown>
           </article>
         </div>
       </div>
 
       {showPreview && (
-        <div className="fixed inset-0 bg-perplexipedia-bg z-50 overflow-auto">
+        <div className="fixed inset-0 bg-perplexipedia-bg z-50 overflow-hidden">
           <button
-            onClick={() => setShowPreview(false)}
+            onClick={closePreview}
             className="fixed top-20 left-4 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 z-50"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -414,110 +570,112 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
             </svg>
             <span>Back to Editor</span>
           </button>
-          <div className="min-h-screen flex flex-col">
-            <Header />
-            <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
-              <Sidebar />
-              <main className="flex-1 transition-all duration-300 ease-in-out">
-                <div className="perplexipedia-card">
-                  <article className="prose dark:prose-invert max-w-none">
-                    <h1 className="text-4xl font-bold mb-4">{title}</h1>
-                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-8 space-x-4">
-                      <span>By {article?.author || 'Anonymous'}</span>
-                      <span>•</span>
-                      <span>Last updated: {new Date().toLocaleDateString()}</span>
-                    </div>
-                    <div className="perplexipedia-article">
-                      {renderInfoBox()}
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]} 
-                        rehypePlugins={[rehypeRaw]}
-                        components={{
-                          h1: ({node, ...props}) => <h1 className="text-4xl font-bold mt-8 mb-4" {...props} />,
-                          h2: ({node, ...props}) => <h2 className="text-3xl font-bold mt-6 mb-3" {...props} />,
-                          h3: ({node, ...props}) => <h3 className="text-2xl font-bold mt-5 mb-2" {...props} />,
-                          p: ({node, children, ...props}) => {
-                            // Check if the paragraph only contains an image
-                            const childrenArray = React.Children.toArray(children);
-                            if (childrenArray.length === 1 && 
-                                React.isValidElement(childrenArray[0]) && 
-                                childrenArray[0].type === 'img') {
-                              // Return the image element directly
-                              return childrenArray[0];
-                            }
-                            return <p className="mb-4" {...props}>{children}</p>;
-                          },
-                          ul: ({node, ...props}) => <ul className="list-disc list-inside mb-4 ml-4" {...props} />,
-                          ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-4 ml-4" {...props} />,
-                          li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                          blockquote: ({node, ...props}) => (
-                            <blockquote className="border-l-4 border-gray-300 pl-4 my-4 italic" {...props} />
-                          ),
-                          img: ({node, alt, src, ...props}) => (
-                            <img
-                              src={src}
-                              alt={alt}
-                              className="max-w-full h-auto rounded-lg mx-auto my-8"
-                              {...props}
-                            />
-                          ),
-                          a: ({node, href, ...props}) => (
-                            <a
-                              href={href}
-                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              {...props}
-                            />
-                          ),
-                          table: ({node, ...props}) => (
-                            <div className="overflow-x-auto my-4">
-                              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" {...props} />
-                            </div>
-                          ),
-                          th: ({node, ...props}) => (
-                            <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...props} />
-                          ),
-                          td: ({node, ...props}) => (
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100" {...props} />
-                          ),
-                          code: ({node, ...props}) => (
-                            props.className?.includes('inline') ? (
-                              <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm" {...props} />
-                            ) : (
-                              <code className="block bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto text-sm" {...props} />
+          <div className="h-screen overflow-auto">
+            <div className="min-h-screen flex flex-col">
+              <Header />
+              <div className="container !max-w-[1672px] mx-auto px-4 py-8 flex flex-1">
+                <Sidebar />
+                <main className="flex-1 transition-all duration-300 ease-in-out">
+                  <div className="perplexipedia-card">
+                    <article className="prose dark:prose-invert max-w-none">
+                      <h1 className="text-4xl font-bold mb-4">{title}</h1>
+                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-8 space-x-4">
+                        <span>By {article?.author || 'Anonymous'}</span>
+                        <span>•</span>
+                        <span>Last updated: {new Date().toLocaleDateString()}</span>
+                      </div>
+                      <div className="perplexipedia-article">
+                        {renderInfoBox()}
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]} 
+                          rehypePlugins={[rehypeRaw]}
+                          components={{
+                            h1: ({node, ...props}) => <h1 className="text-4xl font-bold mt-8 mb-4" {...props} />,
+                            h2: ({node, ...props}) => <h2 className="text-3xl font-bold mt-6 mb-3" {...props} />,
+                            h3: ({node, ...props}) => <h3 className="text-2xl font-bold mt-5 mb-2" {...props} />,
+                            p: ({node, children, ...props}) => {
+                              // Check if the paragraph only contains an image
+                              const childrenArray = React.Children.toArray(children);
+                              if (childrenArray.length === 1 && 
+                                  React.isValidElement(childrenArray[0]) && 
+                                  childrenArray[0].type === 'img') {
+                                // Return the image element directly
+                                return childrenArray[0];
+                              }
+                              return <p className="mb-4" {...props}>{children}</p>;
+                            },
+                            ul: ({node, ...props}) => <ul className="list-disc list-inside mb-4 ml-4" {...props} />,
+                            ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-4 ml-4" {...props} />,
+                            li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                            blockquote: ({node, ...props}) => (
+                              <blockquote className="border-l-4 border-gray-300 pl-4 my-4 italic" {...props} />
+                            ),
+                            img: ({node, alt, src, ...props}) => (
+                              <img
+                                src={src}
+                                alt={alt}
+                                className="max-w-full h-auto rounded-lg mx-auto my-8"
+                                {...props}
+                              />
+                            ),
+                            a: ({node, href, ...props}) => (
+                              <a
+                                href={href}
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                {...props}
+                              />
+                            ),
+                            table: ({node, ...props}) => (
+                              <div className="overflow-x-auto my-4">
+                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" {...props} />
+                              </div>
+                            ),
+                            th: ({node, ...props}) => (
+                              <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...props} />
+                            ),
+                            td: ({node, ...props}) => (
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100" {...props} />
+                            ),
+                            code: ({node, ...props}) => (
+                              props.className?.includes('inline') ? (
+                                <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm" {...props} />
+                              ) : (
+                                <code className="block bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto text-sm" {...props} />
+                              )
                             )
-                          )
-                        }}
-                      >
-                        {content}
-                      </ReactMarkdown>
-                      {images && images.length > 0 && (
-                        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {images
-                            .filter((_, index) => index !== infobox?.image)
-                            .map((image, index) => (
-                              <figure key={index} className="border dark:border-gray-700 rounded p-2">
-                                <img
-                                  src={image.url}
-                                  alt={image.description}
-                                  className="w-full h-48 object-cover rounded"
-                                />
-                                <figcaption className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                                  {image.description}
-                                  <br />
-                                  <span className="text-xs">{image.attribution}</span>
-                                </figcaption>
-                              </figure>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                </div>
-              </main>
+                          }}
+                        >
+                          {filterInfoBoxFromContent(content)}
+                        </ReactMarkdown>
+                        {images && images.length > 0 && (
+                          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {images
+                              .filter((_, index) => index !== infobox?.image)
+                              .map((image, index) => (
+                                <figure key={index} className="border dark:border-gray-700 rounded p-2">
+                                  <img
+                                    src={image.url}
+                                    alt={image.description}
+                                    className="w-full h-48 object-cover rounded"
+                                  />
+                                  <figcaption className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                    {image.description}
+                                    <br />
+                                    <span className="text-xs">{image.attribution}</span>
+                                  </figcaption>
+                                </figure>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  </div>
+                </main>
+              </div>
+              <Footer />
             </div>
-            <Footer />
           </div>
         </div>
       )}
