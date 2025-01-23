@@ -289,14 +289,24 @@ export const ArticleView: React.FC = () => {
                   <a {...props} className="text-perplexity-primary hover:text-perplexity-primary-dark" />
                 ),
                 h2: ({node, children, ...props}) => {
-                  const text = typeof children === 'string' ? children : Array.isArray(children) ? children.join('') : '';
-                  const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                  return <h2 id={id} {...props} className="text-2xl sm:text-2xl lg:text-3xl font-bold mt-10 mb-6 leading-tight" />;
+                  const id = children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                  return <h2 id={id} {...props} className="text-2xl sm:text-2xl lg:text-3xl font-bold mt-10 mb-6 leading-tight">{children}</h2>;
                 },
                 h3: ({node, children, ...props}) => {
-                  const text = typeof children === 'string' ? children : Array.isArray(children) ? children.join('') : '';
-                  const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                  return <h3 id={id} {...props} className="text-xl sm:text-xl lg:text-2xl font-bold mt-8 mb-4 leading-tight" />;
+                  const id = children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                  return <h3 id={id} {...props} className="text-xl sm:text-xl lg:text-2xl font-bold mt-8 mb-4 leading-tight">{children}</h3>;
+                },
+                h4: ({node, children, ...props}) => {
+                  const id = children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                  return <h4 id={id} {...props} className="text-lg sm:text-lg lg:text-xl font-bold mt-6 mb-3 leading-tight">{children}</h4>;
+                },
+                h5: ({node, children, ...props}) => {
+                  const id = children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                  return <h5 id={id} {...props} className="text-base sm:text-base lg:text-lg font-bold mt-4 mb-2 leading-tight">{children}</h5>;
+                },
+                h6: ({node, children, ...props}) => {
+                  const id = children?.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                  return <h6 id={id} {...props} className="text-base sm:text-base lg:text-lg font-semibold mt-4 mb-2 leading-tight">{children}</h6>;
                 },
                 p: ({node, ...props}) => (
                   <p {...props} className="text-base mb-6 leading-relaxed" />
