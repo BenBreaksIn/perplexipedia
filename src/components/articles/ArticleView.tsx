@@ -288,12 +288,16 @@ export const ArticleView: React.FC = () => {
                 a: ({node, ...props}) => (
                   <a {...props} className="text-perplexity-primary hover:text-perplexity-primary-dark" />
                 ),
-                h2: ({node, ...props}) => (
-                  <h2 {...props} className="text-2xl sm:text-2xl lg:text-3xl font-bold mt-10 mb-6 leading-tight" />
-                ),
-                h3: ({node, ...props}) => (
-                  <h3 {...props} className="text-xl sm:text-xl lg:text-2xl font-bold mt-8 mb-4 leading-tight" />
-                ),
+                h2: ({node, children, ...props}) => {
+                  const text = typeof children === 'string' ? children : Array.isArray(children) ? children.join('') : '';
+                  const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                  return <h2 id={id} {...props} className="text-2xl sm:text-2xl lg:text-3xl font-bold mt-10 mb-6 leading-tight" />;
+                },
+                h3: ({node, children, ...props}) => {
+                  const text = typeof children === 'string' ? children : Array.isArray(children) ? children.join('') : '';
+                  const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                  return <h3 id={id} {...props} className="text-xl sm:text-xl lg:text-2xl font-bold mt-8 mb-4 leading-tight" />;
+                },
                 p: ({node, ...props}) => (
                   <p {...props} className="text-base mb-6 leading-relaxed" />
                 ),
