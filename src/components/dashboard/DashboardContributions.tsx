@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAI } from '../../hooks/useAI';
 import { useAuth } from '../../contexts/AuthContext';
-import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Article, ArticleStatus } from '../../types/article';
 import { generateSlug } from '../../utils/urlUtils';
+import { PreviewModal } from '../articles/PreviewModal';
 
 interface AutoPilotConfig {
   numberOfArticles: number;
@@ -44,6 +45,7 @@ export const DashboardContributions = () => {
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [simulatedProgress, setSimulatedProgress] = useState(0);
+  const [previewArticle, setPreviewArticle] = useState<Article | null>(null);
 
   const addTopic = (topic: string) => {
     const trimmedTopic = topic.trim();
@@ -77,6 +79,7 @@ export const DashboardContributions = () => {
 
     try {
       setLoading(true);
+      // Load articles where user is the author
       const articlesRef = collection(db, 'articles');
       const q = query(articlesRef, where('authorId', '==', currentUser.uid));
       const querySnapshot = await getDocs(q);
@@ -84,7 +87,38 @@ export const DashboardContributions = () => {
         id: doc.id,
         ...doc.data()
       })) as Article[];
-      setArticles(loadedArticles);
+
+      // Load article versions where user is the contributor
+      const versionsRef = collection(db, 'articleVersions');
+      const versionsQuery = query(
+        versionsRef,
+        where('authorId', '==', currentUser.uid),
+        where('status', '==', 'pending')
+      );
+      const versionsSnapshot = await getDocs(versionsQuery);
+      
+      // Get the articles for these versions
+      const articleIds = new Set(versionsSnapshot.docs.map(doc => doc.data().articleId));
+      const contributedArticlesPromises = Array.from(articleIds).map(async (articleId) => {
+        const articleDoc = await getDoc(doc(db, 'articles', articleId));
+        if (articleDoc.exists() && articleDoc.data().authorId !== currentUser.uid) {
+          return {
+            id: articleDoc.id,
+            ...articleDoc.data(),
+            isContribution: true
+          } as Article;
+        }
+        return null;
+      });
+      
+      const contributedArticles = (await Promise.all(contributedArticlesPromises))
+        .filter((article): article is Article => article !== null);
+
+      // Combine both arrays, removing duplicates
+      const allArticles = [...loadedArticles, ...contributedArticles];
+      const uniqueArticles = Array.from(new Map(allArticles.map(article => [article.id, article])).values());
+      
+      setArticles(uniqueArticles);
     } catch (error) {
       console.error('Error loading articles:', error);
     } finally {
@@ -506,7 +540,7 @@ export const DashboardContributions = () => {
           className="perplexipedia-card hover:shadow-md transition-shadow"
         >
           <div className="flex justify-between items-start">
-            <div className="space-y-2 flex-1">
+            <div>
               <div className="flex items-center space-x-3">
                 <h3 className="text-lg font-medium">
                   {article.status === 'published' ? (
@@ -520,39 +554,67 @@ export const DashboardContributions = () => {
                     article.title
                   )}
                 </h3>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${
-                  article.status === 'published' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
-                  article.status === 'under_review' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' :
-                  'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-400'
-                }`}>
-                  {article.status.split('_').map(word => 
-                    word.charAt(0).toUpperCase() + word.slice(1)
-                  ).join(' ')}
-                </span>
+                <div className="flex items-center space-x-2">
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    article.status === 'published' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
+                    article.status === 'under_review' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' :
+                    'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-400'
+                  }`}>
+                    {article.status.split('_').map(word => 
+                      word.charAt(0).toUpperCase() + word.slice(1)
+                    ).join(' ')}
+                  </span>
+                  {article.isContribution && (
+                    <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400">
+                      Contribution
+                    </span>
+                  )}
+                </div>
               </div>
-              <p className="text-gray-600 dark:text-gray-300 line-clamp-2 font-serif">
+              <p className="text-gray-600 dark:text-gray-300 line-clamp-2 font-serif mt-2">
                 {article.content.slice(0, 200)}...
               </p>
-              <div className="flex items-center space-x-4 text-sm text-gray-500">
+              <div className="flex items-center space-x-4 text-sm text-gray-500 mt-2">
                 <span>{article.content.split(' ').length} words</span>
                 <span>•</span>
                 <span>Last modified: {formatDate(article.updatedAt)}</span>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <button
-                onClick={() => navigate(`/dashboard/plexi/${article.slug || generateSlug(article.title)}/edit`)}
-                className="btn-secondary text-sm flex items-center space-x-1"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-                <span>Edit</span>
-              </button>
+              {article.isContribution && article.status === 'under_review' ? (
+                <button
+                  onClick={() => setPreviewArticle(article)}
+                  className="btn-secondary text-sm flex items-center space-x-1"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Preview</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate(`/dashboard/plexi/${article.slug || generateSlug(article.title)}/edit`)}
+                  className="btn-secondary text-sm flex items-center space-x-1"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                  </svg>
+                  <span>Edit</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
       ))}
+
+      {/* Preview Modal */}
+      {previewArticle && (
+        <PreviewModal
+          article={previewArticle}
+          onClose={() => setPreviewArticle(null)}
+        />
+      )}
     </div>
   );
 
